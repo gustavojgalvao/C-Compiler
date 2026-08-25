@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-Compiler Studio | Compilador C em Python</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <header class="app-header">
+        <div class="logo-area">
+            <div class="logo-badge">⚡</div>
+            <div class="logo-text">
+                <h1>C-Compiler <span>Studio</span></h1>
+                <span class="subtext">Engine 100% Python do Zero</span>
+            </div>
+        </div>
+
+        <div class="header-presets">
+            <label for="sample-select">Exemplos Prontos:</label>
+            <select id="sample-select" class="dropdown-preset">
+                <option value="variables">03 - Variáveis Locais (a + b)</option>
+                <option value="arithmetic">02 - Aritmética & Precedência</option>
+                <option value="return_val">01 - Retorno Simples</option>
+                <option value="control_flow">04 - Laço While & If/Else</option>
+                <option value="functions">05 - Definição de Funções</option>
+                <option value="pointers">06 - Ponteiros e Endereçamento</option>
+            </select>
+        </div>
+
+        <div class="header-actions">
+            <span class="status-pill online">● Engine Python Ativa</span>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="app-layout">
+        <!-- Left Panel: Code Editor -->
+        <section class="editor-panel">
+            <div class="panel-header">
+                <div class="file-tab active">
+                    <span class="file-icon">📄</span>
+                    <span class="file-name">codigo.c</span>
+                </div>
+                <div class="editor-actions">
+                    <button id="btn-clear" class="btn-ghost" title="Limpar código">🗑️ Limpar</button>
+                    <button id="btn-compile" class="btn-primary" id="btn-compile">
+                        <span>▶ Compilar & Executar</span>
+                        <kbd>Ctrl + Enter</kbd>
+                    </button>
+                </div>
+            </div>
+
+            <div class="editor-container">
+                <textarea id="code-editor" spellcheck="false" placeholder="// Digite ou cole seu código C aqui...">int main() {
+    int a = 10;
+    int b = 25;
+    int c = a + b;
+    return c;
+}</textarea>
+            </div>
+
+            <!-- Pipeline Visual Steps -->
+            <div class="pipeline-bar">
+                <div class="step-card active" id="step-lexer">
+                    <span class="step-num">1</span>
+                    <span class="step-name">Lexer</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card" id="step-parser">
+                    <span class="step-num">2</span>
+                    <span class="step-name">Parser</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card" id="step-semantic">
+                    <span class="step-num">3</span>
+                    <span class="step-name">Semântica</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card" id="step-ir">
+                    <span class="step-num">4</span>
+                    <span class="step-name">IR & Otimizador</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card" id="step-codegen">
+                    <span class="step-num">5</span>
+                    <span class="step-name">Assembly</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card" id="step-vm">
+                    <span class="step-num">6</span>
+                    <span class="step-name">Execução</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Multi-Stage Inspector -->
+        <section class="inspector-panel">
+            <nav class="inspector-tabs">
+                <button class="tab-btn active" data-tab="tab-result">
+                    <span class="tab-icon">🖥️</span> Resultado
+                </button>
+                <button class="tab-btn" data-tab="tab-tokens">
+                    <span class="tab-icon">🏷️</span> 1. Tokens <span class="badge" id="tokens-count">0</span>
+                </button>
+                <button class="tab-btn" data-tab="tab-ast">
+                    <span class="tab-icon">🌳</span> 2. Árvore AST
+                </button>
+                <button class="tab-btn" data-tab="tab-ir">
+                    <span class="tab-icon">⚙️</span> 3. IR (Código 3 Endereços)
+                </button>
+                <button class="tab-btn" data-tab="tab-assembly">
+                    <span class="tab-icon">⚡</span> 4. Assembly x86-64
+                </button>
+                <button class="tab-btn highlight" data-tab="tab-learn">
+                    <span class="tab-icon">💡</span> Como o Python fez isso?
+                </button>
+            </nav>
+
+            <div class="tab-contents">
+                <!-- Tab: Resultado -->
+                <div class="tab-pane active" id="tab-result">
+                    <div class="result-card-container">
+                        <div class="result-hero" id="result-hero">
+                            <div class="result-label">CÓDIGO DE RETORNO (OUTPUT DE MAIN)</div>
+                            <div class="result-value" id="result-val">35</div>
+                            <div class="result-status" id="result-status">✔ Compilado e executado com sucesso</div>
+                        </div>
+
+                        <div class="metrics-grid">
+                            <div class="metric-box">
+                                <span class="metric-title">Tokens Analisados</span>
+                                <span class="metric-num" id="metric-tokens">-</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-title">Funções Compiladas</span>
+                                <span class="metric-num" id="metric-functions">-</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-title">Instruções Assembly</span>
+                                <span class="metric-num" id="metric-assembly">-</span>
+                            </div>
+                        </div>
+
+                        <div class="terminal-card">
+                            <div class="terminal-header">
+                                <span>Console de Compilação</span>
+                            </div>
+                            <pre class="terminal-body" id="compile-logs">> Aguardando compilação...</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Tokens -->
+                <div class="tab-pane" id="tab-tokens">
+                    <div class="pane-header-desc">
+                        O <strong>Lexer</strong> fatiou seu código C na seguinte sequência ordenada de tokens:
+                    </div>
+                    <div class="tokens-container" id="tokens-list">
+                        <!-- Tokens chips gerados via JS -->
+                    </div>
+                </div>
+
+                <!-- Tab: AST -->
+                <div class="tab-pane" id="tab-ast">
+                    <div class="pane-header-desc">
+                        O <strong>Parser</strong> transformou a sequência de tokens nesta <strong>Árvore de Sintaxe Abstrata (AST)</strong>:
+                    </div>
+                    <div class="code-view">
+                        <pre id="ast-view">// A árvore sintática aparecerá aqui...</pre>
+                    </div>
+                </div>
+
+                <!-- Tab: IR -->
+                <div class="tab-pane" id="tab-ir">
+                    <div class="ir-split-view">
+                        <div class="ir-col">
+                            <h4>1. IR Bruta (Antes da Otimização)</h4>
+                            <pre id="ir-raw">// IR intermediária inicial</pre>
+                        </div>
+                        <div class="ir-col">
+                            <h4>2. IR Otimizada (Constant Folding aplicado)</h4>
+                            <pre id="ir-optimized">// IR otimizada</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Assembly -->
+                <div class="tab-pane" id="tab-assembly">
+                    <div class="pane-header-desc">
+                        Código <strong>Assembly x86-64</strong> real emitido pelo gerador de código:
+                    </div>
+                    <div class="code-view">
+                        <pre id="assembly-view">.text
+.globl main
+...</pre>
+                    </div>
+                </div>
+
+                <!-- Tab: Aprenda a Lógica -->
+                <div class="tab-pane" id="tab-learn">
+                    <div class="learn-container">
+                        <h3>🎓 Como a lógica do Python construiu esse resultado:</h3>
+                        
+                        <div class="learn-card">
+                            <div class="card-num">1</div>
+                            <div class="card-content">
+                                <h4>Como o Lexer leu os caracteres:</h4>
+                                <p>O Python percorreu a string do seu código com um cursor <code>source[cursor]</code>, agrupou letras em palavras como <code>int</code> ou números como <code>10</code> e criou objetos <code>Token(tipo, valor)</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="learn-card">
+                            <div class="card-num">2</div>
+                            <div class="card-content">
+                                <h4>Como o Parser montou a Árvore (AST):</h4>
+                                <p>O Parser usou funções recursivas: leu o tipo de retorno, o nome da função, as declarações e aninhou operações como nós <code>BinaryOpNode(op='+', left=10, right=25)</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="learn-card">
+                            <div class="card-num">3</div>
+                            <div class="card-content">
+                                <h4>Como o Otimizador simplificou:</h4>
+                                <p>Ele detectou que <code>10 + 25</code> eram constantes e fez o cálculo na hora da compilação (*Constant Folding*), substituindo por <code>35</code> antes mesmo de gerar o Assembly.</p>
+                            </div>
+                        </div>
+
+                        <div class="learn-card">
+                            <div class="card-num">4</div>
+                            <div class="card-content">
+                                <h4>Como o Assembly foi gerado:</h4>
+                                <p>Traduziu os nós para instruções <code>movl</code>, <code>addl</code> e organizou a pilha usando <code>%rbp</code> e <code>%rsp</code>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

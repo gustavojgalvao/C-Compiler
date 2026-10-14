@@ -5,6 +5,8 @@ class Lexer:
         self.codigo = code
         self.cursor = 0
         self.tamanho = len(code)
+        self.linha = 1
+        self.coluna = 1
     
     def caractere_atual(self):
         if self.cursor < self.tamanho:
@@ -12,11 +14,37 @@ class Lexer:
         return None
 
     def avancar(self):
+        char = self.caractere_atual()
+        
+        if char is None:
+            return
+
         self.cursor += 1
+
+        if char == "\n":
+            self.linha += 1
+            self.coluna = 1
+        else:
+            self.coluna += 1
 
     def pular_espacos(self):
         while self.caractere_atual()  is not None and self.caractere_atual() in " \t\n\r":
             self.avancar()
+
+#Método para tokens de um caractere
+    def criar_token_simples(self, tipo):
+        lexema = self.caractere_atual()
+        linha_inicio = self.linha
+        coluna_inicio = self.coluna
+
+        self.avancar()
+
+        return Token(
+            tipo,
+            lexema,
+            linha_inicio,
+            coluna_inicio
+        )
 
     def proximo_token(self):
         self.pular_espacos()
@@ -24,7 +52,7 @@ class Lexer:
         char = self.caractere_atual()
         
         if char is None:
-            return Token("FIM", "")
+            return Token("FIM", "", self.linha, self.coluna)
 
         if char.isdigit():
             return self.ler_numero()
@@ -33,112 +61,107 @@ class Lexer:
             return self.ler_palavra()
 
         if char == "+":
-            self.avancar()
-            return Token("MAIS", "+")
+            return self.criar_token_simples("MAIS")
 
         if char == "-":
-            self.avancar()
-            return Token("MENOS", "-")
-            
+            return self.criar_token_simples("MENOS")
+
         if char == "*":
-            self.avancar()
-            return Token("MUL", "*")
-            
+            return self.criar_token_simples("MUL")
+
         if char == "/":
-            self.avancar()
-            return Token("DIV", "/")
-            
+            return self.criar_token_simples("DIV")
+
         if char == "(":
-            self.avancar()
-            return Token("PAREN_ESQ", "(")
-            
+            return self.criar_token_simples("PAREN_ESQ")
+
         if char == ")":
-            self.avancar()
-            return Token("PAREN_DIR", ")")
+            return self.criar_token_simples("PAREN_DIR")
 
         if char == ";":
-            self.avancar()
-            return Token("PONTO_VIRGULA", ";")
+            return self.criar_token_simples("PONTO_VIRGULA")
 
         if char == "{":
-            self.avancar()
-            return Token("CHAVE_ESQ", "{")
-            
-        if char == "}":
-            self.avancar()
-            return Token("CHAVE_DIR", "}")
-        
-        if char == "=":
-            self.avancar()
-            return Token("IGUAL", "=")
-        
-        if char == "!":
-            self.avancar()
-            return Token("NAO", "!")
-        
-        if char == "<":
-            self.avancar()
-            return Token("MENOR", "<")
-        
-        if char == ">":
-            self.avancar()
-            return Token("MAIOR", ">")
-        
-        if char == "&":
-            self.avancar()
-            return Token("E", "&")
-        
-        if char == "|":
-            self.avancar()
-            return Token("OU", "|")
-        
-        if char == "^":
-            self.avancar()
-            return Token("XOR", "^")
-        
-        if char == "%":
-            self.avancar()
-            return Token("MOD", "%")
-        
-        if char == ".":
-            self.avancar()
-            return Token("PONTO", ".")
-        
-        if char == ",":
-            self.avancar()
-            return Token("VIRGULA", ",")
-        
-        if char == "'":
-            self.avancar()
-            return Token("ASPAS_SIMPLES", "'")
-        
-        if char == '"':
-            self.avancar()
-            return Token("ASPAS_DUPLAS", '"')
-        
-        if char == "#":
-            self.avancar()
-            return Token("CERQUILHA", "#")
-        
-        if char == "@":
-            self.avancar()
-            return Token("arroba", "@")
-        
-        if char == "\\":
-            self.avancar()
-            return Token("BARRA_INV", "\\")
+            return self.criar_token_simples("CHAVE_ESQ")
 
-        raise Exception(f"Caractere inválido: {char}")
+        if char == "}":
+            return self.criar_token_simples("CHAVE_DIR")
+
+        if char == "=":
+            return self.criar_token_simples("IGUAL")
+
+        if char == "!":
+            return self.criar_token_simples("NAO")
+
+        if char == "<":
+            return self.criar_token_simples("MENOR")
+
+        if char == ">":
+            return self.criar_token_simples("MAIOR")
+
+        if char == "&":
+            return self.criar_token_simples("E")
+
+        if char == "|":
+            return self.criar_token_simples("OU")
+
+        if char == "^":
+            return self.criar_token_simples("XOR")
+
+        if char == "%":
+            return self.criar_token_simples("MOD")
+
+        if char == ".":
+            return self.criar_token_simples("PONTO")
+
+        if char == ",":
+            return self.criar_token_simples("VIRGULA")
+
+        if char == "'":
+            return self.criar_token_simples("ASPAS_SIMPLES")
+
+        if char == '"':
+            return self.criar_token_simples("ASPAS_DUPLAS")
+
+        if char == "#":
+            return self.criar_token_simples("CERQUILHA")
+
+        if char == "@":
+            return self.criar_token_simples("ARROBA")
+
+        if char == "\\":
+            return self.criar_token_simples("BARRA_INV")
+        
+        raise Exception(
+            f"Caractere inválido na linha {self.linha}, "
+            f"coluna {self.coluna}: {char!r}"
+        )
 
     def ler_numero(self):
         numero = ""
-        while self.caractere_atual() is not None and self.caractere_atual().isdigit():
+
+        linha_inicio = self.linha
+        coluna_inicio = self.coluna
+
+        while (
+            self.caractere_atual() is not None
+            and self.caractere_atual().isdigit()
+        ):
             numero += self.caractere_atual()
             self.avancar()
-        return Token("NUMERO", int(numero))
+
+        return Token(
+            "NUMERO",
+            numero,
+            linha_inicio,
+            coluna_inicio
+        )
 
     def ler_palavra(self):
         palavra = ""
+
+        linha_inicio = self.linha
+        coluna_inicio = self.coluna
 
         while (
             self.caractere_atual() is not None
@@ -171,8 +194,12 @@ class Lexer:
             "const": "CONST",
         }
 
-        tipo = palavras_reservadas.get(palavra, "IDENTIFICADOR")
-        return Token(tipo, palavra)
+        tipo = palavras_reservadas.get(
+            palavra,
+            "IDENTIFICADOR"
+        )
+
+        return Token(tipo, palavra, linha_inicio, coluna_inicio)
 
     def tokenizar(self):
         tokens = []

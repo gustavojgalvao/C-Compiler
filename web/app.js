@@ -1,217 +1,286 @@
 const SAMPLES = {
-    variables: `int main() {\n    int a = 10;\n    int b = 25;\n    int c = a + b;\n    return c;\n}`,
-    arithmetic: `int main() {\n    return (10 + 5 * 2) - 8 / 2;\n}`,
-    return_val: `int main() {\n    return 42;\n}`,
-    control_flow: `int main() {\n    int i = 0;\n    int sum = 0;\n    while (i < 10) {\n        sum = sum + i;\n        i = i + 1;\n    }\n    if (sum == 45) {\n        return 1;\n    } else {\n        return 0;\n    }\n}`,
-    functions: `int add(int a, int b) {\n    return a + b;\n}\n\nint main() {\n    int x = 20;\n    int y = 22;\n    return add(x, y);\n}`,
-    pointers: `int main() {\n    int x = 100;\n    int *p = &x;\n    *p = 200;\n    return x;\n}`
+    valid: `int a = 10;\nint b = 5;\nint resultado = a + b;`,
+    undeclared: `int resultado = 10;\ntotal = resultado + 5;`,
+    type_error: `int resultado = "texto";`
 };
 
-const codeEditor = document.getElementById("code-editor");
+const editor = document.getElementById("code-editor");
 const lineNumbers = document.getElementById("line-numbers");
+const fileInput = document.getElementById("source-file");
+const filenameLabel = document.getElementById("current-filename");
+const sourceStats = document.getElementById("source-stats");
 const sampleSelect = document.getElementById("sample-select");
-const btnCompile = document.getElementById("btn-compile");
-const btnClear = document.getElementById("btn-clear");
-const engineStatus = document.getElementById("engine-status");
-const resultHero = document.getElementById("result-hero");
-const resultVal = document.getElementById("result-val");
-const resultStatus = document.getElementById("result-status");
-const compileLogs = document.getElementById("compile-logs");
-const metricTokens = document.getElementById("metric-tokens");
-const metricFunctions = document.getElementById("metric-functions");
-const metricAssembly = document.getElementById("metric-assembly");
-const tokensCountBadge = document.getElementById("tokens-count");
-const tokensList = document.getElementById("tokens-list");
-const astView = document.getElementById("ast-view");
-const irRaw = document.getElementById("ir-raw");
-const irOptimized = document.getElementById("ir-optimized");
-const assemblyView = document.getElementById("assembly-view");
-const tabButtons = document.querySelectorAll(".tab-btn");
-const tabPanes = document.querySelectorAll(".tab-pane");
-const pipelineSteps = document.querySelectorAll(".step-card");
+const analyzeButton = document.getElementById("btn-analyze");
+const analysisIndicator = document.getElementById("analysis-indicator");
+const analysisStatus = document.getElementById("analysis-status");
+const analysisTime = document.getElementById("analysis-time");
+const cursorPosition = document.getElementById("cursor-position");
+const tokensCount = document.getElementById("tokens-count");
+const symbolsCount = document.getElementById("symbols-count");
+const problemsCount = document.getElementById("problems-count");
+const statusErrors = document.getElementById("status-errors");
+const semanticSummary = document.getElementById("semantic-summary");
+const tokensBody = document.getElementById("tokens-body");
+const symbolsBody = document.getElementById("symbols-body");
+const problemsBody = document.getElementById("problems-body");
+const astOutput = document.getElementById("ast-output");
+const tabs = document.querySelectorAll(".output-tab");
+const pages = document.querySelectorAll(".output-page");
+const workspace = document.getElementById("workspace");
+const resizer = document.getElementById("editor-resizer");
+const toggleOutput = document.getElementById("toggle-output");
+
+let currentFilename = "exemplo.c";
 
 function selectTab(button) {
-    const targetId = button.dataset.tab;
-
-    tabButtons.forEach((tab) => {
-        const isActive = tab === button;
-        tab.classList.toggle("active", isActive);
-        tab.setAttribute("aria-selected", String(isActive));
+    tabs.forEach((tab) => {
+        const active = tab === button;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
     });
-
-    tabPanes.forEach((pane) => {
-        const isActive = pane.id === targetId;
-        pane.classList.toggle("active", isActive);
-        pane.hidden = !isActive;
+    pages.forEach((page) => {
+        const active = page.id === button.dataset.tab;
+        page.classList.toggle("active", active);
+        page.hidden = !active;
     });
 }
 
-tabButtons.forEach((button) => button.addEventListener("click", () => selectTab(button)));
-
-function updateLineNumbers() {
-    const count = codeEditor.value.split("\n").length;
-    lineNumbers.innerHTML = Array.from({ length: count }, (_, index) => index + 1).join("<br>");
+function openTabById(id) {
+    const tab = Array.from(tabs).find((item) => item.dataset.tab === id);
+    if (tab) selectTab(tab);
 }
 
-codeEditor.addEventListener("input", updateLineNumbers);
-codeEditor.addEventListener("scroll", () => {
-    lineNumbers.scrollTop = codeEditor.scrollTop;
+tabs.forEach((tab) => tab.addEventListener("click", () => selectTab(tab)));
+function updateEditorMetadata() {
+    const lines = editor.value.split("\n");
+    const fragment = document.createDocumentFragment();
+    lines.forEach((_, index) => {
+        const number = document.createElement("span");
+        number.textContent = index + 1;
+        fragment.appendChild(number);
+    });
+    lineNumbers.replaceChildren(fragment);
+    sourceStats.textContent = `${lines.length} ${lines.length === 1 ? "linha" : "linhas"}`;
+}
+
+function updateCursorPosition() {
+    const beforeCursor = editor.value.slice(0, editor.selectionStart);
+    const lines = beforeCursor.split("\n");
+    cursorPosition.textContent = `Ln ${lines.length}, Col ${lines.at(-1).length + 1}`;
+}
+
+editor.addEventListener("input", () => {
+    updateEditorMetadata();
+    updateCursorPosition();
 });
-
-codeEditor.addEventListener("keydown", (event) => {
+editor.addEventListener("click", updateCursorPosition);
+editor.addEventListener("keyup", updateCursorPosition);
+editor.addEventListener("scroll", () => { lineNumbers.scrollTop = editor.scrollTop; });
+editor.addEventListener("keydown", (event) => {
     if (event.key !== "Tab") return;
     event.preventDefault();
-
-    const start = codeEditor.selectionStart;
-    const end = codeEditor.selectionEnd;
-    codeEditor.setRangeText("    ", start, end, "end");
-    updateLineNumbers();
+    editor.setRangeText("    ", editor.selectionStart, editor.selectionEnd, "end");
+    updateEditorMetadata();
+    updateCursorPosition();
 });
 
-sampleSelect.addEventListener("change", (event) => {
-    const sample = SAMPLES[event.target.value];
-    if (!sample) return;
-
-    codeEditor.value = sample;
-    updateLineNumbers();
-    compileCode();
+sampleSelect.addEventListener("change", () => {
+    editor.value = SAMPLES[sampleSelect.value];
+    currentFilename = `${sampleSelect.value}.c`;
+    filenameLabel.textContent = currentFilename;
+    updateEditorMetadata();
+    resetOutput();
+    editor.focus();
 });
 
-btnClear.addEventListener("click", () => {
-    codeEditor.value = "";
-    updateLineNumbers();
-    codeEditor.focus();
+fileInput.addEventListener("change", async () => {
+    const [file] = fileInput.files;
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".c")) {
+        setStatus("Selecione um arquivo .c", "error");
+        fileInput.value = "";
+        return;
+    }
+
+    editor.value = await file.text();
+    currentFilename = file.name;
+    filenameLabel.textContent = currentFilename;
+    updateEditorMetadata();
+    resetOutput();
+    setStatus("Arquivo carregado", "ready");
 });
 
 window.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         event.preventDefault();
-        compileCode();
+        analyzeSource();
     }
 });
 
-btnCompile.addEventListener("click", compileCode);
+analyzeButton.addEventListener("click", analyzeSource);
+document.getElementById("problems-shortcut").addEventListener("click", () => {
+    document.body.classList.remove("output-collapsed");
+    toggleOutput.setAttribute("aria-pressed", "false");
+    openTabById("tab-semantic");
+});
 
-function getTokenCategory(type) {
-    const keywords = ["INT", "CHAR", "VOID", "RETURN", "IF", "ELSE", "WHILE", "FOR", "STRUCT", "SIZEOF"];
-    const operators = ["PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "ASSIGN", "EQ_EQ", "BANG_EQ", "LESS", "LESS_EQ", "GREATER", "GREATER_EQ", "AND_AND", "OR_OR", "BANG", "TILDE", "INCREMENT", "DECREMENT", "AMPERSAND"];
-    const delimiters = ["SEMICOLON", "COMMA", "DOT", "ARROW", "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACKET", "RBRACKET", "EOF"];
+toggleOutput.addEventListener("click", () => {
+    const collapsed = document.body.classList.toggle("output-collapsed");
+    toggleOutput.setAttribute("aria-pressed", String(collapsed));
+    toggleOutput.title = collapsed ? "Mostrar resultados" : "Recolher resultados";
+});
 
-    if (keywords.includes(type)) return "keyword";
-    if (type === "IDENTIFIER") return "identifier";
-    if (type === "INT_LITERAL") return "number";
-    if (operators.includes(type)) return "operator";
-    if (delimiters.includes(type)) return "delimiter";
-    return "default";
+resizer.addEventListener("pointerdown", (event) => {
+    if (window.innerWidth <= 900) return;
+    resizer.setPointerCapture(event.pointerId);
+    resizer.classList.add("dragging");
+    document.body.style.cursor = "row-resize";
+});
+
+resizer.addEventListener("pointermove", (event) => {
+    if (!resizer.hasPointerCapture(event.pointerId)) return;
+    const rect = workspace.getBoundingClientRect();
+    const requested = event.clientY - rect.top;
+    const maximum = rect.height - 155;
+    const height = Math.max(220, Math.min(requested, maximum));
+    document.documentElement.style.setProperty("--editor-height", `${height}px`);
+});
+
+function stopResize(event) {
+    if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
+    resizer.classList.remove("dragging");
+    document.body.style.cursor = "";
+}
+resizer.addEventListener("pointerup", stopResize);
+resizer.addEventListener("pointercancel", stopResize);
+
+function setStatus(message, state) {
+    analysisStatus.textContent = message;
+    analysisIndicator.className = "status-item";
+    analysisIndicator.classList.add(state === "running" ? "status-running" : state === "error" ? "status-error" : "status-ready");
 }
 
-function setCompiling(isCompiling) {
-    btnCompile.disabled = isCompiling;
-    btnCompile.classList.toggle("loading", isCompiling);
-    btnCompile.querySelector(".btn-label").textContent = isCompiling ? "Compilando" : "Compilar";
+function resetOutput() {
+    tokensCount.textContent = "0";
+    symbolsCount.textContent = "0";
+    problemsCount.textContent = "0";
+    statusErrors.textContent = "0";
+    tokensBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum token disponível.</td></tr>';
+    symbolsBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum símbolo disponível.</td></tr>';
+    problemsBody.innerHTML = '<tr class="empty-row"><td colspan="4">Execute a análise para verificar o código.</td></tr>';
+    astOutput.textContent = "// A árvore sintática aparecerá aqui.";
+    semanticSummary.textContent = "Nenhuma análise executada";
+    setStatus("Pronto", "ready");
 }
 
-function setPipelineComplete(isComplete) {
-    pipelineSteps.forEach((step) => step.classList.toggle("success", isComplete));
-}
-
-function setEngineAvailability(isAvailable) {
-    engineStatus.classList.toggle("offline", !isAvailable);
-    engineStatus.title = isAvailable ? "Servidor de compilação disponível" : "Servidor de compilação indisponível";
-    engineStatus.querySelector(".engine-status-label").textContent = isAvailable ? "Engine disponível" : "Engine offline";
-}
-
-async function compileCode() {
-    const code = codeEditor.value.trim();
-    if (!code) {
-        resultHero.classList.add("error");
-        resultVal.textContent = "Sem código";
-        resultStatus.textContent = "Escreva ou selecione um exemplo para compilar.";
-        compileLogs.textContent = "[erro] O editor está vazio.";
+async function analyzeSource() {
+    const code = editor.value;
+    if (!code.trim()) {
+        renderProblem("Entrada", 1, 1, "O arquivo está vazio.");
         return;
     }
 
-    setCompiling(true);
-    resultStatus.textContent = "Executando pipeline de compilação…";
+    const startedAt = performance.now();
+    analyzeButton.disabled = true;
+    analyzeButton.classList.add("loading");
+    analyzeButton.querySelector(".button-label").textContent = "Analisando";
+    setStatus("Analisando", "running");
+    analysisTime.textContent = "…";
 
     try {
-        const response = await fetch("/api/compile", {
+        const response = await fetch("/api/analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code })
+            body: JSON.stringify({ code, filename: currentFilename })
         });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
 
-        if (!response.ok) throw new Error(`O servidor respondeu com HTTP ${response.status}.`);
-        const data = await response.json();
-        setEngineAvailability(true);
-
-        if (data.success) {
-            resultHero.classList.remove("error");
-            resultVal.textContent = data.result;
-            resultStatus.textContent = "Compilação concluída sem erros";
-            metricTokens.textContent = data.metrics.tokens_count;
-            metricFunctions.textContent = data.metrics.functions_count;
-            metricAssembly.textContent = data.metrics.assembly_lines;
-            tokensCountBadge.textContent = data.metrics.tokens_count;
-            compileLogs.textContent = [
-                "[ok] Compilação concluída",
-                `lexer       ${data.metrics.tokens_count} tokens`,
-                `parser      ${data.metrics.functions_count} função(ões)`,
-                "optimizer   constant folding aplicado",
-                `codegen     ${data.metrics.assembly_lines} linhas x86-64`,
-                `main        retorno ${data.result}`
-            ].join("\n");
-
-            renderTokens(data.tokens);
-            astView.textContent = data.ast_pretty;
-            irRaw.textContent = data.ir_unoptimized;
-            irOptimized.textContent = data.ir_optimized;
-            assemblyView.textContent = data.assembly;
-            setPipelineComplete(true);
-        } else {
-            resultHero.classList.add("error");
-            resultVal.textContent = "Falhou";
-            resultStatus.textContent = `Erro em ${data.error_stage || "compilação"}`;
-            compileLogs.textContent = `[erro] ${data.error}\nlinha ${data.line}, coluna ${data.column}`;
-            setPipelineComplete(false);
+        if (!result.success) {
+            renderFailure(result);
+            return;
         }
+
+        renderTokens(result.tokens || []);
+        renderSymbols(result.symbols || []);
+        astOutput.textContent = result.ast_pretty || JSON.stringify(result.ast, null, 2);
+        renderSuccess(result.semantic);
+        setStatus("Análise concluída", "ready");
     } catch (error) {
-        setEngineAvailability(false);
-        resultHero.classList.add("error");
-        resultVal.textContent = "Offline";
-        resultStatus.textContent = "Não foi possível acessar o servidor local";
-        compileLogs.textContent = `[conexão] ${error.message || String(error)}`;
-        setPipelineComplete(false);
+        renderProblem("Conexão", 1, 1, `API indisponível: ${error.message}`);
+        setStatus("Backend não conectado", "error");
     } finally {
-        setCompiling(false);
+        analysisTime.textContent = `${Math.round(performance.now() - startedAt)} ms`;
+        analyzeButton.disabled = false;
+        analyzeButton.classList.remove("loading");
+        analyzeButton.querySelector(".button-label").textContent = "Analisar";
     }
 }
 
 function renderTokens(tokens) {
-    const fragment = document.createDocumentFragment();
-    tokensList.replaceChildren();
-
-    tokens.forEach((token) => {
-        const chip = document.createElement("div");
-        const type = document.createElement("span");
-        const value = document.createElement("span");
-        const position = document.createElement("span");
-
-        chip.className = "token-chip";
-        type.className = `token-type ${getTokenCategory(token.type)}`;
-        value.className = "token-val";
-        position.className = "token-pos";
-        type.textContent = token.type;
-        value.textContent = token.value || " ";
-        position.textContent = `${token.line}:${token.column}`;
-        chip.append(type, value, position);
-        fragment.appendChild(chip);
+    tokensBody.replaceChildren();
+    tokensCount.textContent = tokens.length;
+    tokens.forEach((token, index) => {
+        const row = document.createElement("tr");
+        appendCells(row, [index + 1, token.type || token.tipo, token.lexeme ?? token.lexema ?? token.value ?? token.valor ?? "", token.line ?? token.linha ?? "—", token.column ?? token.coluna ?? "—"]);
+        tokensBody.appendChild(row);
     });
-
-    tokensList.appendChild(fragment);
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-    updateLineNumbers();
-    compileCode();
-});
+function renderSymbols(symbols) {
+    symbolsBody.replaceChildren();
+    symbolsCount.textContent = symbols.length;
+    symbols.forEach((symbol, index) => {
+        const row = document.createElement("tr");
+        appendCells(row, [symbol.order ?? symbol.ordem ?? index + 1, symbol.lexeme ?? symbol.lexema, symbol.category ?? symbol.categoria, symbol.data_type ?? symbol.tipo ?? "—", symbol.line ?? symbol.linha ?? "—"]);
+        symbolsBody.appendChild(row);
+    });
+}
+
+function appendCells(row, values) {
+    values.forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = String(value);
+        row.appendChild(cell);
+    });
+}
+
+function renderSuccess(semantic = {}) {
+    problemsBody.replaceChildren();
+    const row = document.createElement("tr");
+    const severity = document.createElement("td");
+    severity.className = "severity-ok";
+    severity.textContent = "OK";
+    row.appendChild(severity);
+    appendCells(row, ["—", "—", semantic.message || "Nenhuma inconsistência semântica encontrada."]);
+    problemsBody.appendChild(row);
+    problemsCount.textContent = "0";
+    statusErrors.textContent = "0";
+    semanticSummary.textContent = "0 erros";
+}
+
+function renderProblem(stage, line, column, description) {
+    problemsBody.replaceChildren();
+    const row = document.createElement("tr");
+    const severity = document.createElement("td");
+    severity.className = "severity-error";
+    severity.textContent = "ERRO";
+    row.appendChild(severity);
+    appendCells(row, [line ?? "—", column ?? "—", `[${stage}] ${description}`]);
+    problemsBody.appendChild(row);
+    problemsCount.textContent = "1";
+    statusErrors.textContent = "1";
+    semanticSummary.textContent = "1 erro";
+    document.body.classList.remove("output-collapsed");
+    toggleOutput.setAttribute("aria-pressed", "false");
+    openTabById("tab-semantic");
+}
+
+function renderFailure(result) {
+    const stage = result.error_stage || "Análise";
+    renderProblem(stage, result.line, result.column, result.error);
+    setStatus(`Erro ${stage.toLowerCase()}`, "error");
+}
+
+updateEditorMetadata();
+updateCursorPosition();

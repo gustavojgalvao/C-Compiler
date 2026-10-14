@@ -1,187 +1,172 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark">
-    <title>C Compiler — Playground</title>
+    <title>Mini Compilador C</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    <header class="app-header">
-        <a class="brand" href="/" aria-label="C Compiler — início">
-            <span class="brand-mark" aria-hidden="true">C</span>
-            <span class="brand-copy">
-                <strong>C Compiler</strong>
-                <small>playground</small>
-            </span>
-        </a>
+    <header class="topbar">
+        <div class="topbar-left">
+            <a class="brand" href="/">
+                <strong>Mini Compilador C</strong>
+            </a>
+            <nav class="app-menu" aria-label="Menu principal">
+                <button type="button">Arquivo</button>
+                <button type="button">Editar</button>
+                <button type="button">Analisar</button>
+                <button type="button">Ajuda</button>
+            </nav>
+        </div>
 
-        <div class="header-tools">
-            <label class="sample-field" for="sample-select">
-                <span>Exemplo</span>
-                <select id="sample-select" class="dropdown-preset">
-                    <option value="variables">Variáveis locais</option>
-                    <option value="arithmetic">Aritmética e precedência</option>
-                    <option value="return_val">Retorno simples</option>
-                    <option value="control_flow">While e if/else</option>
-                    <option value="functions">Funções</option>
-                    <option value="pointers">Ponteiros</option>
-                </select>
-            </label>
-
-            <div class="engine-status" id="engine-status" title="Verificando servidor de compilação" aria-live="polite">
-                <span class="status-dot" aria-hidden="true"></span>
-                <span class="engine-status-label">Conectando</span>
-            </div>
+        <div class="topbar-actions">
+            <select id="sample-select" class="control-select" aria-label="Escolher exemplo">
+                <option value="valid">Código válido</option>
+                <option value="undeclared">Variável não declarada</option>
+                <option value="type_error">Tipos incompatíveis</option>
+            </select>
+            <label class="secondary-button" for="source-file">Abrir arquivo</label>
+            <input id="source-file" type="file" accept=".c,text/x-c" hidden>
+            <button id="btn-analyze" class="primary-button" type="button">
+                <span class="play-icon" aria-hidden="true"></span>
+                <span class="button-label">Analisar</span>
+                <kbd>Ctrl ↵</kbd>
+            </button>
+            <button id="toggle-output" class="icon-button" type="button" title="Recolher resultados"
+                aria-label="Recolher resultados" aria-pressed="false">
+                <span class="panel-icon" aria-hidden="true"></span>
+            </button>
         </div>
     </header>
 
-    <main class="app-layout">
+    <main class="workspace" id="workspace">
         <section class="editor-panel" aria-label="Editor de código">
-            <div class="panel-header">
-                <div class="file-path">
-                    <span class="language-badge">C</span>
-                    <span>src</span>
-                    <span class="path-separator">/</span>
-                    <strong>main.c</strong>
-                    <span class="unsaved-indicator" title="Arquivo em edição"></span>
+            <div class="editor-tabs">
+                <div class="file-tab active">
+                    <span class="c-file-icon">C</span>
+                    <span id="current-filename">main.c</span>
+                    <i class="dirty-dot" aria-hidden="true"></i>
                 </div>
-
-                <div class="editor-actions">
-                    <button id="btn-clear" class="btn btn-quiet" type="button">Limpar</button>
-                    <button id="btn-compile" class="btn btn-primary" type="button">
-                        <span class="run-icon" aria-hidden="true"></span>
-                        <span class="btn-label">Compilar</span>
-                        <kbd>Ctrl ↵</kbd>
-                    </button>
-                </div>
+                <div class="editor-meta" id="source-stats">3 linhas</div>
             </div>
-
-            <div class="editor-container">
-                <div id="line-numbers" class="line-numbers" aria-hidden="true">1<br>2<br>3<br>4<br>5<br>6</div>
-                <textarea id="code-editor" aria-label="Código-fonte C" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="// Escreva seu código C aqui">int main() {
-    int a = 10;
-    int b = 25;
-    int c = a + b;
-    return c;
-}</textarea>
-            </div>
-
-            <div class="pipeline-bar" aria-label="Etapas do compilador">
-                <span class="pipeline-label">Pipeline</span>
-                <div class="pipeline-steps">
-                    <div class="step-card active" id="step-lexer"><span class="step-num">01</span><span class="step-name">Lexer</span></div>
-                    <div class="step-card" id="step-parser"><span class="step-num">02</span><span class="step-name">Parser</span></div>
-                    <div class="step-card" id="step-semantic"><span class="step-num">03</span><span class="step-name">Semântica</span></div>
-                    <div class="step-card" id="step-ir"><span class="step-num">04</span><span class="step-name">IR</span></div>
-                    <div class="step-card" id="step-codegen"><span class="step-num">05</span><span class="step-name">Assembly</span></div>
-                    <div class="step-card" id="step-vm"><span class="step-num">06</span><span class="step-name">Execução</span></div>
-                </div>
+            <div class="editor-body">
+                <div id="line-numbers" class="line-numbers" aria-hidden="true">
+                    <span>1</span><span>2</span><span>3</span></div>
+                <textarea id="code-editor" aria-label="Código-fonte C" spellcheck="false" autocomplete="off"
+                    autocapitalize="off">int a = 10;
+int b = 5;
+int resultado = a + b;</textarea>
             </div>
         </section>
 
-        <section class="inspector-panel" aria-label="Saída do compilador">
-            <nav class="inspector-tabs" role="tablist" aria-label="Visualizações da compilação">
-                <button class="tab-btn active" id="result-tab" role="tab" aria-selected="true" aria-controls="tab-result" data-tab="tab-result">Resultado</button>
-                <button class="tab-btn" id="tokens-tab" role="tab" aria-selected="false" aria-controls="tab-tokens" data-tab="tab-tokens">Tokens <span class="badge" id="tokens-count">0</span></button>
-                <button class="tab-btn" id="ast-tab" role="tab" aria-selected="false" aria-controls="tab-ast" data-tab="tab-ast">AST</button>
-                <button class="tab-btn" id="ir-tab" role="tab" aria-selected="false" aria-controls="tab-ir" data-tab="tab-ir">IR</button>
-                <button class="tab-btn" id="assembly-tab" role="tab" aria-selected="false" aria-controls="tab-assembly" data-tab="tab-assembly">x86-64</button>
-                <button class="tab-btn" id="learn-tab" role="tab" aria-selected="false" aria-controls="tab-learn" data-tab="tab-learn">Internals</button>
+        <div id="editor-resizer" class="panel-resizer" role="separator" aria-label="Redimensionar editor"
+            aria-orientation="horizontal" tabindex="0"></div>
+
+        <section class="output-panel" id="output-panel" aria-label="Resultados da análise">
+            <nav class="output-tabs" role="tablist" aria-label="Resultados">
+                <button class="output-tab active" id="tokens-tab" role="tab" aria-selected="true"
+                    aria-controls="tab-tokens" data-tab="tab-tokens">Tokens <span id="tokens-count">0</span></button>
+                <button class="output-tab" id="symbols-tab" role="tab" aria-selected="false" aria-controls="tab-symbols"
+                    data-tab="tab-symbols">Símbolos <span id="symbols-count">0</span></button>
+                <button class="output-tab" id="ast-tab" role="tab" aria-selected="false" aria-controls="tab-ast"
+                    data-tab="tab-ast">AST</button>
+                <button class="output-tab" id="semantic-tab" role="tab" aria-selected="false"
+                    aria-controls="tab-semantic" data-tab="tab-semantic">Semântica <span
+                        id="problems-count">0</span></button>
             </nav>
 
-            <div class="tab-contents">
-                <div class="tab-pane active" id="tab-result" role="tabpanel" aria-labelledby="result-tab">
-                    <div class="section-heading">
-                        <div>
-                            <span class="eyebrow">Última execução</span>
-                            <h2>Resumo da compilação</h2>
-                        </div>
-                        <span class="build-id">main.c</span>
+            <div class="output-content">
+                <section class="output-page active" id="tab-tokens" role="tabpanel" aria-labelledby="tokens-tab">
+                    <div class="table-scroller">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Tipo</th>
+                                    <th>Lexema</th>
+                                    <th>Linha</th>
+                                    <th>Coluna</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tokens-body">
+                                <tr class="empty-row">
+                                    <td colspan="5">Nenhum token disponível.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <div class="result-summary" id="result-hero">
-                        <div class="result-copy">
-                            <span class="result-label">Retorno de main()</span>
-                            <strong class="result-value" id="result-val">—</strong>
-                        </div>
-                        <div class="result-status" id="result-status" role="status">Aguardando compilação</div>
+                </section>
+                <section class="output-page" id="tab-symbols" role="tabpanel" aria-labelledby="symbols-tab" hidden>
+                    <div class="table-scroller">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Lexema</th>
+                                    <th>Categoria</th>
+                                    <th>Tipo</th>
+                                    <th>Linha</th>
+                                </tr>
+                            </thead>
+                            <tbody id="symbols-body">
+                                <tr class="empty-row">
+                                    <td colspan="5">Nenhum símbolo disponível.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <dl class="metrics-grid">
-                        <div class="metric-box"><dt>Tokens</dt><dd id="metric-tokens">—</dd></div>
-                        <div class="metric-box"><dt>Funções</dt><dd id="metric-functions">—</dd></div>
-                        <div class="metric-box"><dt>Linhas assembly</dt><dd id="metric-assembly">—</dd></div>
-                    </dl>
-
-                    <div class="terminal-card">
-                        <div class="terminal-header">
-                            <span>Saída</span>
-                            <span class="terminal-context">compiler</span>
-                        </div>
-                        <pre class="terminal-body" id="compile-logs">Aguardando compilação...</pre>
+                </section>
+                <section class="output-page" id="tab-ast" role="tabpanel" aria-labelledby="ast-tab" hidden>
+                    <pre id="ast-output" class="ast-output">// A árvore sintática aparecerá aqui.</pre>
+                </section>
+                <section class="output-page" id="tab-semantic" role="tabpanel" aria-labelledby="semantic-tab" hidden>
+                    <div class="problems-toolbar"><span>Problemas</span><span id="semantic-summary">Nenhuma análise
+                            executada</span></div>
+                    <div class="table-scroller">
+                        <table class="data-table problems-table">
+                            <thead>
+                                <tr>
+                                    <th>Severidade</th>
+                                    <th>Linha</th>
+                                    <th>Coluna</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody id="problems-body">
+                                <tr class="empty-row">
+                                    <td colspan="4">Execute a análise para verificar o código.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-
-                <div class="tab-pane" id="tab-tokens" role="tabpanel" aria-labelledby="tokens-tab" hidden>
-                    <div class="pane-header">
-                        <span class="eyebrow">Análise léxica</span>
-                        <h2>Sequência de tokens</h2>
-                        <p>Tokens identificados pelo lexer, na ordem em que aparecem no código.</p>
-                    </div>
-                    <div class="tokens-container" id="tokens-list"></div>
-                </div>
-
-                <div class="tab-pane" id="tab-ast" role="tabpanel" aria-labelledby="ast-tab" hidden>
-                    <div class="pane-header">
-                        <span class="eyebrow">Análise sintática</span>
-                        <h2>Árvore de sintaxe abstrata</h2>
-                        <p>Estrutura produzida pelo parser a partir da sequência de tokens.</p>
-                    </div>
-                    <div class="code-view"><pre id="ast-view">A árvore sintática aparecerá aqui.</pre></div>
-                </div>
-
-                <div class="tab-pane" id="tab-ir" role="tabpanel" aria-labelledby="ir-tab" hidden>
-                    <div class="pane-header">
-                        <span class="eyebrow">Representação intermediária</span>
-                        <h2>Antes e depois da otimização</h2>
-                    </div>
-                    <div class="ir-split-view">
-                        <section class="ir-col"><h3>IR original</h3><pre id="ir-raw">A IR inicial aparecerá aqui.</pre></section>
-                        <section class="ir-col"><h3>IR otimizada</h3><pre id="ir-optimized">A IR otimizada aparecerá aqui.</pre></section>
-                    </div>
-                </div>
-
-                <div class="tab-pane" id="tab-assembly" role="tabpanel" aria-labelledby="assembly-tab" hidden>
-                    <div class="pane-header">
-                        <span class="eyebrow">Geração de código</span>
-                        <h2>Assembly x86-64</h2>
-                        <p>Saída emitida pelo gerador de código para a arquitetura x86-64.</p>
-                    </div>
-                    <div class="code-view"><pre id="assembly-view">.text
-.globl main
-…</pre></div>
-                </div>
-
-                <div class="tab-pane" id="tab-learn" role="tabpanel" aria-labelledby="learn-tab" hidden>
-                    <div class="pane-header">
-                        <span class="eyebrow">Visão geral</span>
-                        <h2>Como o compilador processa o código</h2>
-                        <p>As principais transformações entre o arquivo-fonte e a execução.</p>
-                    </div>
-
-                    <ol class="learn-list">
-                        <li><span class="card-num">01</span><div class="card-content"><h3>Tokenização</h3><p>O lexer percorre o código e agrupa caracteres em unidades como palavras-chave, identificadores, literais e operadores.</p><code>Token(tipo, valor, linha, coluna)</code></div></li>
-                        <li><span class="card-num">02</span><div class="card-content"><h3>Construção da AST</h3><p>O parser valida a gramática e organiza os tokens em uma árvore que representa declarações, expressões e comandos.</p><code>BinaryOpNode(left, op, right)</code></div></li>
-                        <li><span class="card-num">03</span><div class="card-content"><h3>Otimização</h3><p>A representação intermediária é simplificada antes da geração de código, incluindo operações como constant folding.</p><code>10 + 25 → 35</code></div></li>
-                        <li><span class="card-num">04</span><div class="card-content"><h3>Geração e execução</h3><p>As instruções finais são emitidas em assembly x86-64 e a IR é executada pela máquina virtual do projeto.</p><code>movl · addl · ret</code></div></li>
-                    </ol>
-                </div>
+                </section>
             </div>
         </section>
     </main>
 
+    <footer class="statusbar">
+        <div class="status-left">
+            <span id="analysis-indicator" class="status-item status-ready"><i></i><span
+                    id="analysis-status">Pronto</span></span>
+            <button class="status-item status-button" id="problems-shortcut" type="button"><span
+                    class="error-symbol">×</span> <b id="status-errors">0</b> erros</button>
+        </div>
+        <div class="status-right">
+            <span id="cursor-position">Ln 1, Col 1</span><span>Espaços: 4</span><span>UTF-8</span><span>C</span><span
+                id="analysis-time">—</span>
+        </div>
+    </footer>
+
     <script src="app.js"></script>
 </body>
+
 </html>

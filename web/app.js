@@ -1,6 +1,3 @@
-// ==========================================================================
-// Exemplos C pré-carregados
-// ==========================================================================
 const SAMPLES = {
     variables: `int main() {\n    int a = 10;\n    int b = 25;\n    int c = a + b;\n    return c;\n}`,
     arithmetic: `int main() {\n    return (10 + 5 * 2) - 8 / 2;\n}`,
@@ -10,187 +7,211 @@ const SAMPLES = {
     pointers: `int main() {\n    int x = 100;\n    int *p = &x;\n    *p = 200;\n    return x;\n}`
 };
 
-// Elementos do DOM
 const codeEditor = document.getElementById("code-editor");
+const lineNumbers = document.getElementById("line-numbers");
 const sampleSelect = document.getElementById("sample-select");
 const btnCompile = document.getElementById("btn-compile");
 const btnClear = document.getElementById("btn-clear");
-
+const engineStatus = document.getElementById("engine-status");
 const resultHero = document.getElementById("result-hero");
 const resultVal = document.getElementById("result-val");
 const resultStatus = document.getElementById("result-status");
 const compileLogs = document.getElementById("compile-logs");
-
 const metricTokens = document.getElementById("metric-tokens");
 const metricFunctions = document.getElementById("metric-functions");
 const metricAssembly = document.getElementById("metric-assembly");
 const tokensCountBadge = document.getElementById("tokens-count");
-
 const tokensList = document.getElementById("tokens-list");
 const astView = document.getElementById("ast-view");
 const irRaw = document.getElementById("ir-raw");
 const irOptimized = document.getElementById("ir-optimized");
 const assemblyView = document.getElementById("assembly-view");
-
 const tabButtons = document.querySelectorAll(".tab-btn");
 const tabPanes = document.querySelectorAll(".tab-pane");
+const pipelineSteps = document.querySelectorAll(".step-card");
 
-// ==========================================================================
-// Troca de Abas
-// ==========================================================================
-tabButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-        const targetTab = btn.getAttribute("data-tab");
-        tabButtons.forEach(b => b.classList.remove("active"));
-        tabPanes.forEach(p => p.classList.remove("active"));
+function selectTab(button) {
+    const targetId = button.dataset.tab;
 
-        btn.classList.add("active");
-        document.getElementById(targetTab).classList.add("active");
+    tabButtons.forEach((tab) => {
+        const isActive = tab === button;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-selected", String(isActive));
     });
+
+    tabPanes.forEach((pane) => {
+        const isActive = pane.id === targetId;
+        pane.classList.toggle("active", isActive);
+        pane.hidden = !isActive;
+    });
+}
+
+tabButtons.forEach((button) => button.addEventListener("click", () => selectTab(button)));
+
+function updateLineNumbers() {
+    const count = codeEditor.value.split("\n").length;
+    lineNumbers.innerHTML = Array.from({ length: count }, (_, index) => index + 1).join("<br>");
+}
+
+codeEditor.addEventListener("input", updateLineNumbers);
+codeEditor.addEventListener("scroll", () => {
+    lineNumbers.scrollTop = codeEditor.scrollTop;
 });
 
-// ==========================================================================
-// Troca de Exemplos Prontos
-// ==========================================================================
-sampleSelect.addEventListener("change", (e) => {
-    const val = e.target.value;
-    if (SAMPLES[val]) {
-        codeEditor.value = SAMPLES[val];
-        compileCode();
-    }
+codeEditor.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    event.preventDefault();
+
+    const start = codeEditor.selectionStart;
+    const end = codeEditor.selectionEnd;
+    codeEditor.setRangeText("    ", start, end, "end");
+    updateLineNumbers();
 });
 
-// Limpar editor
+sampleSelect.addEventListener("change", (event) => {
+    const sample = SAMPLES[event.target.value];
+    if (!sample) return;
+
+    codeEditor.value = sample;
+    updateLineNumbers();
+    compileCode();
+});
+
 btnClear.addEventListener("click", () => {
     codeEditor.value = "";
+    updateLineNumbers();
     codeEditor.focus();
 });
 
-// Atalho de Teclado: Ctrl + Enter para compilar
-window.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
+window.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
         compileCode();
     }
 });
 
 btnCompile.addEventListener("click", compileCode);
 
-// ==========================================================================
-// Classificação Visual dos Tokens
-// ==========================================================================
 function getTokenCategory(type) {
-    const kw = ["INT", "CHAR", "VOID", "RETURN", "IF", "ELSE", "WHILE", "FOR", "STRUCT", "SIZEOF"];
-    const op = ["PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "ASSIGN", "EQ_EQ", "BANG_EQ", "LESS", "LESS_EQ", "GREATER", "GREATER_EQ", "AND_AND", "OR_OR", "BANG", "TILDE", "INCREMENT", "DECREMENT", "AMPERSAND"];
-    const delim = ["SEMICOLON", "COMMA", "DOT", "ARROW", "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACKET", "RBRACKET", "EOF"];
+    const keywords = ["INT", "CHAR", "VOID", "RETURN", "IF", "ELSE", "WHILE", "FOR", "STRUCT", "SIZEOF"];
+    const operators = ["PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "ASSIGN", "EQ_EQ", "BANG_EQ", "LESS", "LESS_EQ", "GREATER", "GREATER_EQ", "AND_AND", "OR_OR", "BANG", "TILDE", "INCREMENT", "DECREMENT", "AMPERSAND"];
+    const delimiters = ["SEMICOLON", "COMMA", "DOT", "ARROW", "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACKET", "RBRACKET", "EOF"];
 
-    if (kw.includes(type)) return "keyword";
+    if (keywords.includes(type)) return "keyword";
     if (type === "IDENTIFIER") return "identifier";
     if (type === "INT_LITERAL") return "number";
-    if (op.includes(type)) return "operator";
-    if (delim.includes(type)) return "delimiter";
+    if (operators.includes(type)) return "operator";
+    if (delimiters.includes(type)) return "delimiter";
     return "default";
 }
 
-// ==========================================================================
-// Função Principal de Compilação (API POST /api/compile)
-// ==========================================================================
+function setCompiling(isCompiling) {
+    btnCompile.disabled = isCompiling;
+    btnCompile.classList.toggle("loading", isCompiling);
+    btnCompile.querySelector(".btn-label").textContent = isCompiling ? "Compilando" : "Compilar";
+}
+
+function setPipelineComplete(isComplete) {
+    pipelineSteps.forEach((step) => step.classList.toggle("success", isComplete));
+}
+
+function setEngineAvailability(isAvailable) {
+    engineStatus.classList.toggle("offline", !isAvailable);
+    engineStatus.title = isAvailable ? "Servidor de compilação disponível" : "Servidor de compilação indisponível";
+    engineStatus.querySelector(".engine-status-label").textContent = isAvailable ? "Engine disponível" : "Engine offline";
+}
+
 async function compileCode() {
     const code = codeEditor.value.trim();
     if (!code) {
-        alert("Por favor, digite um código em C para compilar.");
+        resultHero.classList.add("error");
+        resultVal.textContent = "Sem código";
+        resultStatus.textContent = "Escreva ou selecione um exemplo para compilar.";
+        compileLogs.textContent = "[erro] O editor está vazio.";
         return;
     }
 
-    // Animação de loading no botão
-    btnCompile.style.opacity = "0.7";
-    btnCompile.innerHTML = "<span>⏳ Compilando...</span>";
+    setCompiling(true);
+    resultStatus.textContent = "Executando pipeline de compilação…";
 
     try {
         const response = await fetch("/api/compile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: code })
+            body: JSON.stringify({ code })
         });
 
+        if (!response.ok) throw new Error(`O servidor respondeu com HTTP ${response.status}.`);
         const data = await response.json();
+        setEngineAvailability(true);
 
         if (data.success) {
-            // 1. Atualizar Resultado
             resultHero.classList.remove("error");
             resultVal.textContent = data.result;
-            resultStatus.textContent = "✔ Compilado com sucesso e executado na VM Python";
-
+            resultStatus.textContent = "Compilação concluída sem erros";
             metricTokens.textContent = data.metrics.tokens_count;
             metricFunctions.textContent = data.metrics.functions_count;
             metricAssembly.textContent = data.metrics.assembly_lines;
             tokensCountBadge.textContent = data.metrics.tokens_count;
+            compileLogs.textContent = [
+                "[ok] Compilação concluída",
+                `lexer       ${data.metrics.tokens_count} tokens`,
+                `parser      ${data.metrics.functions_count} função(ões)`,
+                "optimizer   constant folding aplicado",
+                `codegen     ${data.metrics.assembly_lines} linhas x86-64`,
+                `main        retorno ${data.result}`
+            ].join("\n");
 
-            compileLogs.textContent = `[OK] Pipeline de compilação executado com sucesso!\n- Lexer: ${data.metrics.tokens_count} tokens identificados.\n- Parser: ${data.metrics.functions_count} função(ões) processadas na AST.\n- IR & Otimizador: Constant folding aplicado com sucesso.\n- CodeGen: ${data.metrics.assembly_lines} linhas de Assembly x86-64 geradas.\n- Execução: Retorno da função main() = ${data.result}`;
-
-            // 2. Renderizar Tokens
             renderTokens(data.tokens);
-
-            // 3. Renderizar AST
             astView.textContent = data.ast_pretty;
-
-            // 4. Renderizar IR
             irRaw.textContent = data.ir_unoptimized;
             irOptimized.textContent = data.ir_optimized;
-
-            // 5. Renderizar Assembly
             assemblyView.textContent = data.assembly;
-
-            // Atualizar status das etapas
-            document.querySelectorAll(".step-card").forEach(s => s.classList.add("success"));
-
+            setPipelineComplete(true);
         } else {
-            // Exibir Erro
             resultHero.classList.add("error");
-            resultVal.textContent = "Erro";
-            resultStatus.textContent = `Falha na etapa: ${data.error_stage}`;
-            compileLogs.textContent = `[FALHA] ${data.error}\nLinha: ${data.line}, Coluna: ${data.column}`;
-
-            document.querySelectorAll(".step-card").forEach(s => s.classList.remove("success"));
+            resultVal.textContent = "Falhou";
+            resultStatus.textContent = `Erro em ${data.error_stage || "compilação"}`;
+            compileLogs.textContent = `[erro] ${data.error}\nlinha ${data.line}, coluna ${data.column}`;
+            setPipelineComplete(false);
         }
-
-    } catch (err) {
+    } catch (error) {
+        setEngineAvailability(false);
         resultHero.classList.add("error");
-        resultVal.textContent = "Erro de Conexão";
-        resultStatus.textContent = "Não foi possível comunicar com o servidor Python.";
-        compileLogs.textContent = String(err);
+        resultVal.textContent = "Offline";
+        resultStatus.textContent = "Não foi possível acessar o servidor local";
+        compileLogs.textContent = `[conexão] ${error.message || String(error)}`;
+        setPipelineComplete(false);
     } finally {
-        btnCompile.style.opacity = "1";
-        btnCompile.innerHTML = "<span>▶ Compilar & Executar</span><kbd>Ctrl + Enter</kbd>";
+        setCompiling(false);
     }
 }
 
-// Renderiza a lista de chips de tokens
 function renderTokens(tokens) {
-    tokensList.innerHTML = "";
-    tokens.forEach(t => {
-        const cat = getTokenCategory(t.type);
+    const fragment = document.createDocumentFragment();
+    tokensList.replaceChildren();
+
+    tokens.forEach((token) => {
         const chip = document.createElement("div");
+        const type = document.createElement("span");
+        const value = document.createElement("span");
+        const position = document.createElement("span");
+
         chip.className = "token-chip";
-        chip.innerHTML = `
-            <span class="token-type ${cat}">${t.type}</span>
-            <span class="token-val">${escapeHtml(t.value || " ")}</span>
-            <span class="token-pos">L${t.line}:C${t.column}</span>
-        `;
-        tokensList.appendChild(chip);
+        type.className = `token-type ${getTokenCategory(token.type)}`;
+        value.className = "token-val";
+        position.className = "token-pos";
+        type.textContent = token.type;
+        value.textContent = token.value || " ";
+        position.textContent = `${token.line}:${token.column}`;
+        chip.append(type, value, position);
+        fragment.appendChild(chip);
     });
+
+    tokensList.appendChild(fragment);
 }
 
-function escapeHtml(str) {
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-// Executar compilação inicial ao carregar
 window.addEventListener("DOMContentLoaded", () => {
+    updateLineNumbers();
     compileCode();
 });

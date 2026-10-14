@@ -139,11 +139,49 @@ class Lexer:
 
     def ler_palavra(self):
         palavra = ""
-        while self.caractere_atual() is not None and (self.caractere_atual().isalnum() or
-        self.caractere_atual() == "_"):
+
+        while (
+            self.caractere_atual() is not None
+            and (
+                self.caractere_atual().isalnum()
+                or self.caractere_atual() == "_"
+            )
+        ):
             palavra += self.caractere_atual()
             self.avancar()
 
+        palavras_reservadas = {
+            "int": "INT",
+            "float": "FLOAT",
+            "char": "CHAR",
+            "void": "VOID",
+            "if": "IF",
+            "else": "ELSE",
+            "while": "WHILE",
+            "for": "FOR",
+            "return": "RETURN",
+            "do": "DO",
+            "switch": "SWITCH",
+            "case": "CASE",
+            "default": "DEFAULT",
+            "break": "BREAK",
+            "continue": "CONTINUE",
+            "sizeof": "SIZEOF",
+            "struct": "STRUCT",
+            "const": "CONST",
+        }
 
-    
-    
+        tipo = palavras_reservadas.get(palavra, "IDENTIFICADOR")
+        return Token(tipo, palavra)
+
+    def tokenizar(self):
+        tokens = []
+
+        while True:
+            token = self.proximo_token()
+            tokens.append(token)
+
+            if token.tipo == "FIM":
+                break
+
+        return tokens

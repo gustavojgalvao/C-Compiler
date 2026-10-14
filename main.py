@@ -1,2 +1,12 @@
-# Aqui nós vamos construir o nosso compilador passo a passo!
-print("Pronto para começar a construir o compilador do zero!")
+from src.lexer import Lexer
+
+codigo = """
+int idade = 20;
+return idade;
+"""
+
+lexer = Lexer(codigo)
+tokens = lexer.tokenizar()
+
+for token in tokens: 
+    print(token)

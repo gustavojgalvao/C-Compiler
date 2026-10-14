@@ -30,7 +30,7 @@ const workspace = document.getElementById("workspace");
 const resizer = document.getElementById("editor-resizer");
 const toggleOutput = document.getElementById("toggle-output");
 
-let currentFilename = "exemplo.c";
+let currentFilename = "main.c";
 
 function selectTab(button) {
     tabs.forEach((tab) => {

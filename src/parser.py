@@ -3,7 +3,9 @@ from src.arvore_sintatica import (
     Declaracao,
     Numero,
     Identificador,
-    OperacaoBinaria
+    OperacaoBinaria,
+    Atribuicao,
+    Retorno
 )
 
 class ErroSintatico(Exception):
@@ -50,10 +52,27 @@ class Parser:
         programa = Programa()
 
         while not self.verificar("FIM"):
-            declaracao = self.ler_declaracao()
-            programa.adicionar(declaracao)
+            comando = self.ler_comando()
+            programa.adicionar(comando)
 
         return programa
+
+    def ler_comando(self):
+        tipo = self.token_atual().tipo
+
+        if tipo in {"INT", "FLOAT", "CHAR"}:
+            return self.ler_declaracao()
+
+        if tipo == "IDENTIFICADOR":
+            return self.ler_atribuicao()
+
+        if tipo == "RETURN":
+            return self.ler_retorno()
+
+        raise ErroSintatico(
+            "Comando inválido",
+            self.token_atual()
+        )
 
     def ler_declaracao(self):
         token_tipo = self.token_atual()
@@ -92,6 +111,48 @@ class Parser:
             token_nome.lexema,
             inicializador,
             token_tipo.linha
+        )
+
+    def ler_atribuicao(self):
+        token_nome = self.consumir(
+            "IDENTIFICADOR",
+            "Esperado o nome da variável"
+        )
+
+        self.consumir(
+            "IGUAL",
+            "Esperado '=' após o identificador"
+        )
+
+        valor = self.ler_expressao()
+
+        self.consumir(
+            "PONTO_VIRGULA",
+            "Esperado ';' após a atribuição"
+        )
+
+        return Atribuicao(
+            token_nome.lexema,
+            valor,
+            token_nome.linha
+        )
+
+    def ler_retorno(self):
+        token_return = self.consumir(
+            "RETURN",
+            "Esperado 'return'"
+        )
+
+        valor = self.ler_expressao()
+
+        self.consumir(
+            "PONTO_VIRGULA",
+            "Esperado ';' após o retorno"
+        )
+
+        return Retorno(
+            valor,
+            token_return.linha
         )
 
     def ler_expressao(self):

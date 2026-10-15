@@ -75,3 +75,34 @@ class OperacaoBinaria:
         ]
 
         return "\n".join(linhas)
+
+class Atribuicao:
+    def __init__(self, nome, valor, linha):
+        self.nome = nome
+        self.valor = valor
+        self.linha = linha
+
+    def formatar(self, nivel=0):
+        espacos = "  " * nivel
+
+        linhas = [
+            f"{espacos}Atribuicao (nome={self.nome})",
+            self.valor.formatar(nivel + 1)
+        ]
+
+        return "\n".join(linhas)
+    
+class Retorno:
+    def __init__(self, valor, linha):
+        self.valor = valor
+        self.linha = linha
+
+    def formatar(self, nivel=0):
+        espacos = "  " * nivel
+
+        linhas = [
+            f"{espacos}Retorno",
+            self.valor.formatar(nivel + 1)
+        ]
+
+        return "\n".join(linhas)

@@ -21,10 +21,43 @@
                 <strong>Mini Compilador C</strong>
             </a>
             <nav class="app-menu" aria-label="Menu principal">
-                <button type="button">Arquivo</button>
-                <button type="button">Editar</button>
-                <button type="button">Analisar</button>
-                <button type="button">Ajuda</button>
+                <div class="menu-group">
+                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-file">Arquivo</button>
+                    <div class="menu-dropdown" id="menu-file" role="menu" hidden>
+                        <button type="button" role="menuitem" data-action="new-file"><span>Novo arquivo</span><kbd>Ctrl N</kbd></button>
+                        <button type="button" role="menuitem" data-action="open-file"><span>Abrir .c</span><kbd>Ctrl O</kbd></button>
+                        <button type="button" role="menuitem" data-action="save-file"><span>Salvar cópia</span><kbd>Ctrl S</kbd></button>
+                    </div>
+                </div>
+                <div class="menu-group">
+                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-edit">Editar</button>
+                    <div class="menu-dropdown" id="menu-edit" role="menu" hidden>
+                        <button type="button" role="menuitem" data-action="undo"><span>Desfazer</span><kbd>Ctrl Z</kbd></button>
+                        <button type="button" role="menuitem" data-action="redo"><span>Refazer</span><kbd>Ctrl Y</kbd></button>
+                        <div class="menu-separator"></div>
+                        <button type="button" role="menuitem" data-action="select-all"><span>Selecionar tudo</span><kbd>Ctrl A</kbd></button>
+                        <button type="button" role="menuitem" data-action="clear-editor"><span>Limpar editor</span></button>
+                    </div>
+                </div>
+                <div class="menu-group">
+                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-analyze">Analisar</button>
+                    <div class="menu-dropdown" id="menu-analyze" role="menu" hidden>
+                        <button type="button" role="menuitem" data-action="run-analysis"><span>Executar análise</span><kbd>Ctrl Enter</kbd></button>
+                        <button type="button" role="menuitem" data-action="clear-results"><span>Limpar resultados</span></button>
+                        <div class="menu-separator"></div>
+                        <button type="button" role="menuitem" data-action="show-tokens"><span>Mostrar tokens</span></button>
+                        <button type="button" role="menuitem" data-action="show-symbols"><span>Mostrar símbolos</span></button>
+                        <button type="button" role="menuitem" data-action="show-ast"><span>Mostrar AST</span></button>
+                        <button type="button" role="menuitem" data-action="show-problems"><span>Mostrar problemas</span></button>
+                    </div>
+                </div>
+                <div class="menu-group">
+                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-help">Ajuda</button>
+                    <div class="menu-dropdown" id="menu-help" role="menu" hidden>
+                        <button type="button" role="menuitem" data-action="show-language-help"><span>Linguagem suportada</span></button>
+                        <button type="button" role="menuitem" data-action="show-about"><span>Sobre o projeto</span></button>
+                    </div>
+                </div>
             </nav>
         </div>
 
@@ -127,9 +160,7 @@ int resultado = a + b;</textarea>
                     </div>
                 </section>
                 <section class="output-page" id="tab-ast" role="tabpanel" aria-labelledby="ast-tab" hidden>
-                    <div id="ast-output" class="ast-canvas">
-                        <p class="ast-empty">A árvore sintática aparece aqui.</p>
-                    </div>
+                    <pre id="ast-output" class="ast-output">// A árvore sintática aparecerá aqui.</pre>
                 </section>
                 <section class="output-page" id="tab-semantic" role="tabpanel" aria-labelledby="semantic-tab" hidden>
                     <div class="problems-toolbar"><span>Problemas</span><span id="semantic-summary">Nenhuma análise
@@ -168,6 +199,14 @@ int resultado = a + b;</textarea>
                 id="analysis-time">—</span>
         </div>
     </footer>
+
+    <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-dialog-title">
+        <header>
+            <strong id="help-dialog-title">Ajuda</strong>
+            <button id="close-help" class="dialog-close" type="button" aria-label="Fechar">×</button>
+        </header>
+        <div id="help-dialog-body" class="help-dialog-body"></div>
+    </dialog>
 
     <script src="app.js"></script>
 </body>

@@ -29,8 +29,39 @@ const pages = document.querySelectorAll(".output-page");
 const workspace = document.getElementById("workspace");
 const resizer = document.getElementById("editor-resizer");
 const toggleOutput = document.getElementById("toggle-output");
+const menuTriggers = document.querySelectorAll(".menu-trigger");
+const menuActions = document.querySelectorAll("[data-action]");
+const helpDialog = document.getElementById("help-dialog");
+const helpDialogTitle = document.getElementById("help-dialog-title");
+const helpDialogBody = document.getElementById("help-dialog-body");
+const closeHelpButton = document.getElementById("close-help");
 
 let currentFilename = "main.c";
+
+function closeMenus(exception = null) {
+    menuTriggers.forEach((trigger) => {
+        const menu = document.getElementById(trigger.getAttribute("aria-controls"));
+        if (trigger === exception) return;
+        trigger.setAttribute("aria-expanded", "false");
+        menu.hidden = true;
+    });
+}
+
+menuTriggers.forEach((trigger) => {
+    trigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const menu = document.getElementById(trigger.getAttribute("aria-controls"));
+        const opening = menu.hidden;
+        closeMenus(trigger);
+        menu.hidden = !opening;
+        trigger.setAttribute("aria-expanded", String(opening));
+    });
+});
+
+document.addEventListener("click", () => closeMenus());
+document.querySelectorAll(".menu-dropdown").forEach((menu) => {
+    menu.addEventListener("click", (event) => event.stopPropagation());
+});
 
 function selectTab(button) {
     tabs.forEach((tab) => {
@@ -111,10 +142,114 @@ fileInput.addEventListener("change", async () => {
 });
 
 window.addEventListener("keydown", (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    const commandKey = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+
+    if (commandKey && key === "enter") {
         event.preventDefault();
         analyzeSource();
+        return;
     }
+
+    if (commandKey && key === "n") {
+        event.preventDefault();
+        newFile();
+    } else if (commandKey && key === "o") {
+        event.preventDefault();
+        fileInput.click();
+    } else if (commandKey && key === "s") {
+        event.preventDefault();
+        saveSourceFile();
+    } else if (key === "escape") {
+        closeMenus();
+        if (helpDialog.open) helpDialog.close();
+    }
+});
+
+function newFile() {
+    editor.value = "";
+    currentFilename = "main.c";
+    filenameLabel.textContent = currentFilename;
+    updateEditorMetadata();
+    updateCursorPosition();
+    resetOutput();
+    editor.focus();
+}
+
+function clearEditor() {
+    editor.value = "";
+    updateEditorMetadata();
+    updateCursorPosition();
+    resetOutput();
+    editor.focus();
+}
+
+function saveSourceFile() {
+    const blob = new Blob([editor.value], { type: "text/x-c;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = currentFilename || "main.c";
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatus("Arquivo salvo", "ready");
+}
+
+function showOutputTab(id) {
+    document.body.classList.remove("output-collapsed");
+    toggleOutput.setAttribute("aria-pressed", "false");
+    openTabById(id);
+}
+
+function showHelp(kind) {
+    if (kind === "language") {
+        helpDialogTitle.textContent = "Linguagem suportada";
+        helpDialogBody.innerHTML = `
+            <p>Este projeto analisa um subconjunto didático de C com declarações, atribuições, expressões aritméticas e retorno.</p>
+            <pre>int idade = 20;
+float preco = 19.90;
+char letra = 'A';
+idade = idade + 2 * 3;
+return idade;</pre>
+            <p>Tipos reconhecidos: <code>int</code>, <code>float</code> e <code>char</code>. Operadores: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> e <code>%</code>.</p>`;
+    } else {
+        helpDialogTitle.textContent = "Sobre o projeto";
+        helpDialogBody.innerHTML = `
+            <p><strong>Mini Compilador C</strong></p>
+            <p>Projeto acadêmico dedicado às etapas léxica, sintática e semântica. A interface apresenta tokens, tabela de símbolos, árvore sintática e diagnósticos do código.</p>
+            <p>Use <code>Ctrl + Enter</code> para analisar o conteúdo do editor.</p>`;
+    }
+
+    helpDialog.showModal();
+}
+
+menuActions.forEach((item) => {
+    item.addEventListener("click", () => {
+        closeMenus();
+
+        switch (item.dataset.action) {
+            case "new-file": newFile(); break;
+            case "open-file": fileInput.click(); break;
+            case "save-file": saveSourceFile(); break;
+            case "undo": editor.focus(); document.execCommand("undo"); updateEditorMetadata(); break;
+            case "redo": editor.focus(); document.execCommand("redo"); updateEditorMetadata(); break;
+            case "select-all": editor.focus(); editor.select(); break;
+            case "clear-editor": clearEditor(); break;
+            case "run-analysis": analyzeSource(); break;
+            case "clear-results": resetOutput(); break;
+            case "show-tokens": showOutputTab("tab-tokens"); break;
+            case "show-symbols": showOutputTab("tab-symbols"); break;
+            case "show-ast": showOutputTab("tab-ast"); break;
+            case "show-problems": showOutputTab("tab-semantic"); break;
+            case "show-language-help": showHelp("language"); break;
+            case "show-about": showHelp("about"); break;
+        }
+    });
+});
+
+closeHelpButton.addEventListener("click", () => helpDialog.close());
+helpDialog.addEventListener("click", (event) => {
+    if (event.target === helpDialog) helpDialog.close();
 });
 
 analyzeButton.addEventListener("click", analyzeSource);
@@ -168,7 +303,7 @@ function resetOutput() {
     tokensBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum token disponível.</td></tr>';
     symbolsBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum símbolo disponível.</td></tr>';
     problemsBody.innerHTML = '<tr class="empty-row"><td colspan="4">Execute a análise para verificar o código.</td></tr>';
-    astOutput.innerHTML = '<p class="ast-empty">A árvore sintática aparecerá aqui.</p>';
+    astOutput.textContent = "// A árvore sintática aparecerá aqui.";
     semanticSummary.textContent = "Nenhuma análise executada";
     setStatus("Pronto", "ready");
 }
@@ -203,7 +338,7 @@ async function analyzeSource() {
 
         renderTokens(result.tokens || []);
         renderSymbols(result.symbols || []);
-        renderAst(result.ast, result.ast_pretty);
+        astOutput.textContent = result.ast_pretty || "// Árvore sintática indisponível.";
         renderSuccess(result.semantic);
         setStatus("Análise concluída", "ready");
     } catch (error) {
@@ -235,58 +370,6 @@ function renderSymbols(symbols) {
         appendCells(row, [symbol.order ?? symbol.ordem ?? index + 1, symbol.lexeme ?? symbol.lexema, symbol.category ?? symbol.categoria, symbol.data_type ?? symbol.tipo ?? "—", symbol.line ?? symbol.linha ?? "—"]);
         symbolsBody.appendChild(row);
     });
-}
-
-function renderAst(ast, fallbackText = "") {
-    astOutput.replaceChildren();
-
-    if (!ast || typeof ast !== "object") {
-        const fallback = document.createElement("pre");
-        fallback.className = "ast-text-fallback";
-        fallback.textContent = fallbackText || "Árvore sintática indisponível.";
-        astOutput.appendChild(fallback);
-        return;
-    }
-
-    const tree = document.createElement("div");
-    tree.className = "ast-tree";
-
-    const rootList = document.createElement("ul");
-    rootList.appendChild(createAstBranch(ast));
-    tree.appendChild(rootList);
-    astOutput.appendChild(tree);
-}
-
-function createAstBranch(node) {
-    const branch = document.createElement("li");
-    const card = document.createElement("div");
-    card.className = "ast-node";
-    card.dataset.kind = node.kind || "node";
-
-    const label = document.createElement("strong");
-    label.textContent = node.label || "Nó";
-    card.appendChild(label);
-
-    if (node.detail) {
-        const detail = document.createElement("span");
-        detail.textContent = node.detail;
-        card.appendChild(detail);
-    }
-
-    if (node.line != null) {
-        card.title = `Linha ${node.line}`;
-    }
-
-    branch.appendChild(card);
-
-    const children = Array.isArray(node.children) ? node.children : [];
-    if (children.length > 0) {
-        const childList = document.createElement("ul");
-        children.forEach((child) => childList.appendChild(createAstBranch(child)));
-        branch.appendChild(childList);
-    }
-
-    return branch;
 }
 
 function appendCells(row, values) {

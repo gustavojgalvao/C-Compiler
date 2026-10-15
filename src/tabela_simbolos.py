@@ -31,7 +31,8 @@ class TabelaSimbolos:
         if existente is not None:
             if existente.tipo == "-" and tipo != "-":
                 existente.tipo = tipo
-                return existente
+            
+            return existente
 
         ordem = len(self.simbolos) + 1
 

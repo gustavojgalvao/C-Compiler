@@ -1,9 +1,10 @@
 from src.lexer import Lexer
 from src.tabela_simbolos import TabelaSimbolos
+from src.parser import Parser
 
 codigo = """int idade = 20;
-int total = idade + 5;
-return total;
+int total = idade;
+float altura;
 """
 
 lexer = Lexer(codigo)
@@ -18,3 +19,10 @@ for token in tokens:
 tabela = TabelaSimbolos()
 tabela.construir(tokens)
 tabela.exibir()
+
+parser = Parser(tokens)
+arvore = parser.analisar()
+
+print("\nÁRVORE SINTÁTICA")
+print("-" * 70)
+print(arvore.formatar())

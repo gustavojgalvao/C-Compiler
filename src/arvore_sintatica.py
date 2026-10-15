@@ -51,3 +51,27 @@ class Identificador:
     def formatar(self, nivel=0):
         espacos = "  " * nivel
         return f"{espacos}Identificador ({self.nome})"
+
+class OperacaoBinaria:
+    def __init__(
+        self,
+        esquerda,
+        operador,
+        direita,
+        linha
+    ):
+        self.esquerda = esquerda
+        self.operador = operador
+        self.direita = direita
+        self.linha = linha
+
+    def formatar(self, nivel=0):
+        espacos = "  " * nivel
+        
+        linhas = [
+            f"{espacos}OperacaoBinaria ({self.operador})",
+            self.esquerda.formatar(nivel + 1),
+            self.direita.formatar(nivel + 1)
+        ]
+
+        return "\n".join(linhas)

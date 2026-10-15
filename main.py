@@ -3,10 +3,9 @@ from src.tabela_simbolos import TabelaSimbolos
 from src.parser import Parser
 
 codigo = """int idade = 20;
-int total = idade;
-float altura;
+int total = idade + 5 * 2;
+int resultado = (idade + 5) * 2;
 """
-
 lexer = Lexer(codigo)
 tokens = lexer.tokenizar()
 

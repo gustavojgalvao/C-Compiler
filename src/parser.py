@@ -3,6 +3,7 @@ from src.arvore_sintatica import (
     Declaracao,
     Numero,
     Identificador,
+    OperacaoBinaria
 )
 
 class ErroSintatico(Exception):
@@ -80,7 +81,7 @@ class Parser:
 
         if self.verificar("IGUAL"):
             self.avancar()
-            inicializador = self.ler_valor()
+            inicializador = self.ler_expressao()
         
         self.consumir(
             "PONTO_VIRGULA", 
@@ -93,7 +94,46 @@ class Parser:
             token_tipo.linha
         )
 
-    def ler_valor(self):
+    def ler_expressao(self):
+        esquerda = self.ler_termo()
+
+        while (
+            self.verificar("MAIS")
+            or self.verificar("MENOS")
+        ):
+            operador = self.avancar()
+            direita = self.ler_termo()
+
+            esquerda = OperacaoBinaria(
+                esquerda,
+                operador.lexema,
+                direita,
+                operador.linha
+            )
+
+        return esquerda
+
+    def ler_termo(self):
+        esquerda = self.ler_fator()
+
+        while (
+            self.verificar("MUL")
+            or self.verificar("DIV")
+            or self.verificar("MOD")
+        ):
+            operador = self.avancar()
+            direita = self.ler_fator()
+
+            esquerda = OperacaoBinaria(
+                esquerda,
+                operador.lexema,
+                direita,
+                operador.linha
+            )
+
+        return esquerda
+
+    def ler_fator(self):
         token = self.token_atual()
 
         if token.tipo == "NUMERO":
@@ -112,6 +152,19 @@ class Parser:
                 token.linha
             )
 
+        if token.tipo == "PAREN_ESQ":
+            self.avancar()
+
+            expressao = self.ler_expressao()
+
+            self.consumir(
+                "PAREN_DIR",
+                "Esperado ')' após a expressão"
+            )
+
+            return expressao
+
         raise ErroSintatico(
-            "Esperado um número ou identificador",token
+            "Esperado um número, identificador ou '('",
+            token
         )

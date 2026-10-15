@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from src.lexer import Lexer
 from src.tabela_simbolos import TabelaSimbolos
+from src.parser import Parser, ErroSintatico
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -75,6 +76,10 @@ class CompilerHandler(SimpleHTTPRequestHandler):
             tabela = TabelaSimbolos()
             tabela.construir(tokens)
 
+            # Segunda etapa: análise sintática
+            parser = Parser(tokens)
+            arvore = parser.analisar()
+
             tokens_json = []
 
             for token in tokens:
@@ -101,10 +106,7 @@ class CompilerHandler(SimpleHTTPRequestHandler):
                 "tokens": tokens_json,
                 "symbols": simbolos_json,
 
-                # Serão substituídos nas próximas aulas
-                "ast_pretty": (
-                    "Análise sintática ainda não implementada."
-                ),
+                "ast_pretty": arvore.formatar(),
                 "semantic": {
                     "message": (
                         "Análise semântica ainda não implementada."
@@ -113,6 +115,15 @@ class CompilerHandler(SimpleHTTPRequestHandler):
             }
 
             self.enviar_json(resposta)
+        
+        except ErroSintatico as erro:
+            self.enviar_json({
+                "success": False,
+                "error_stage": "Sintática",
+                "error": str(erro),
+                "line": erro.linha,
+                "column": erro.coluna
+            })
 
         except json.JSONDecodeError:
             self.enviar_json({

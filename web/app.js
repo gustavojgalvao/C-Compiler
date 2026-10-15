@@ -1,6 +1,6 @@
 const SAMPLES = {
-    valid: `int a = 10;\nint b = 5;\nint resultado = a + b;`,
-    undeclared: `int resultado = 10;\ntotal = resultado + 5;`,
+    valid: `int idade = 20; int total = 0; total = idade + 5 * 2; return total;`,
+    undeclared: `int resultado = 10; total = resultado + 5;`,
     type_error: `int resultado = "texto";`
 };
 

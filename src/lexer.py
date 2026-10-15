@@ -13,6 +13,13 @@ class Lexer:
             return self.codigo[self.cursor]
         return None
 
+    def espiar(self, distancia=1):
+        indice = self.cursor + distancia
+
+        if indice < self.tamanho:
+            return self.codigo[indice]
+        return None
+
     def avancar(self):
         char = self.caractere_atual()
         
@@ -59,6 +66,12 @@ class Lexer:
         
         if char.isalpha() or char == "_":
             return self.ler_palavra()
+
+        if char == "'":
+            return self.ler_caractere()
+
+        if char == '"':
+            return self.ler_texto()
 
         if char == "+":
             return self.criar_token_simples("MAIS")
@@ -117,12 +130,6 @@ class Lexer:
         if char == ",":
             return self.criar_token_simples("VIRGULA")
 
-        if char == "'":
-            return self.criar_token_simples("ASPAS_SIMPLES")
-
-        if char == '"':
-            return self.criar_token_simples("ASPAS_DUPLAS")
-
         if char == "#":
             return self.criar_token_simples("CERQUILHA")
 
@@ -139,19 +146,36 @@ class Lexer:
 
     def ler_numero(self):
         numero = ""
+        possui_ponto = False
 
         linha_inicio = self.linha
         coluna_inicio = self.coluna
 
-        while (
-            self.caractere_atual() is not None
-            and self.caractere_atual().isdigit()
-        ):
-            numero += self.caractere_atual()
-            self.avancar()
+        while self.caractere_atual() is not None:
+            char = self.caractere_atual()
+
+            if char.isdigit():
+                numero += char
+                self.avancar()
+                continue
+
+            if (
+                char == "."
+                and not possui_ponto
+                and self.espiar() is not None
+                and self.espiar().isdigit()
+            ):
+                possui_ponto = True
+                numero += char
+                self.avancar()
+                continue
+
+            break
+
+        tipo = "NUMERO_REAL" if possui_ponto else "NUMERO"
 
         return Token(
-            "NUMERO",
+            tipo,
             numero,
             linha_inicio,
             coluna_inicio
@@ -200,6 +224,74 @@ class Lexer:
         )
 
         return Token(tipo, palavra, linha_inicio, coluna_inicio)
+
+    def ler_caractere(self):
+        linha_inicio = self.linha
+        coluna_inicio = self.coluna
+
+        self.avancar()
+
+        char = self.caractere_atual()
+
+        if char is None or char == "\n" or char == "'":
+            raise Exception(
+                f"Caractere invalido na linha {linha_inicio}, "
+                f"coluna {coluna_inicio}"
+            )
+
+        valor = char
+        self.avancar()
+
+        if self.caractere_atual() != "'":
+            raise Exception(
+                f"Esperada aspas simples na linha {self.linha}, "
+                f"coluna {self.coluna}"
+            )
+
+        self.avancar()
+
+        return Token(
+            "CARACTERE",
+            valor,
+            linha_inicio,
+            coluna_inicio
+        )
+
+    def ler_texto(self):
+        texto = ""
+
+        linha_inicio = self.linha
+        coluna_inicio = self.coluna
+
+        self.avancar()
+
+        while (
+            self.caractere_atual() is not None
+            and self.caractere_atual() != '"'
+        ):
+            if self.caractere_atual() == "\n":
+                raise Exception(
+                    f"Texto não finalizado na linha {linha_inicio}, "
+                    f"coluna {coluna_inicio}"
+                )
+
+            texto += self.caractere_atual()
+            self.avancar()
+
+        if self.caractere_atual() is None:
+            raise Exception(
+            f"Texto não finalizado na linha {linha_inicio}, "
+            f"coluna {coluna_inicio}"
+        )
+
+        self.avancar()
+
+        return Token(
+            "TEXTO",
+            texto,
+            linha_inicio,
+            coluna_inicio
+        )
 
     def tokenizar(self):
         tokens = []

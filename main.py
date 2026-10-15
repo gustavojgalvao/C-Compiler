@@ -2,10 +2,11 @@ from src.lexer import Lexer
 from src.tabela_simbolos import TabelaSimbolos
 from src.parser import Parser
 
-codigo = """int idade = 20;
-int total = 0;
-total = idade + 5 * 2;
-return total;
+codigo = """int quantidade = 10;
+float preco = 19.90;
+char letra = 'A';
+int erro = "texto";
+return quantidade;
 """
 
 lexer = Lexer(codigo)

@@ -38,11 +38,42 @@ class Numero:
     def __init__(self, valor, linha):
         self.valor = valor
         self.linha = linha
+        self.tipo = "int"
     
     def formatar(self, nivel=0):
         espacos = "  " * nivel
         return f"{espacos}Numero ({self.valor})"
-    
+
+class NumeroReal:
+    def __init__(self, valor, linha):
+        self.valor = valor
+        self.linha = linha
+        self.tipo = "float"
+
+    def formatar(self, nivel=0):
+        espacos = "  " * nivel
+        return f"{espacos}NumeroReal ({self.valor})"
+
+class Caractere:
+    def __init__(self, valor, linha):
+        self.valor = valor
+        self.linha = linha
+        self.tipo = 'char'
+
+    def formatar(self, nivel=0):
+        espacos = "  " * nivel
+        return f"{espacos}Caractere ({self.valor})"
+
+class Texto:
+    def __init__(self, valor, linha):
+        self.valor = valor
+        self.linha = linha
+        self.tipo = 'texto'
+
+    def formatar(self, nivel=0):
+        espacos = "  " * nivel
+        return f"{espacos}Texto ({self.valor})"
+
 class Identificador:
     def __init__(self, nome, linha):
         self.nome = nome

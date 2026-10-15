@@ -2,6 +2,9 @@ from src.arvore_sintatica import (
     Programa,
     Declaracao,
     Numero,
+    NumeroReal,
+    Caractere,
+    Texto,
     Identificador,
     OperacaoBinaria,
     Atribuicao,
@@ -201,6 +204,30 @@ class Parser:
             self.avancar()
 
             return Numero(
+                token.lexema,
+                token.linha
+            )
+
+        if token.tipo == "NUMERO_REAL":
+            self.avancar()
+
+            return NumeroReal(
+                token.lexema,
+                token.linha
+            )
+
+        if token.tipo == "CARACTERE":
+            self.avancar()
+
+            return Caractere(
+                token.lexema,
+                token.linha
+            )
+
+        if token.tipo == "TEXTO":
+            self.avancar()
+
+            return Texto(
                 token.lexema,
                 token.linha
             )

@@ -60,7 +60,8 @@
             </div>
             <div class="editor-body">
                 <div id="line-numbers" class="line-numbers" aria-hidden="true">
-                    <span>1</span><span>2</span><span>3</span></div>
+                    <span>1</span><span>2</span><span>3</span>
+                </div>
                 <textarea id="code-editor" aria-label="Código-fonte C" spellcheck="false" autocomplete="off"
                     autocapitalize="off">int a = 10;
 int b = 5;
@@ -126,7 +127,9 @@ int resultado = a + b;</textarea>
                     </div>
                 </section>
                 <section class="output-page" id="tab-ast" role="tabpanel" aria-labelledby="ast-tab" hidden>
-                    <pre id="ast-output" class="ast-output">// A árvore sintática aparecerá aqui.</pre>
+                    <div id="ast-output" class="ast-canvas">
+                        <p class="ast-empty">A árvore sintática aparece aqui.</p>
+                    </div>
                 </section>
                 <section class="output-page" id="tab-semantic" role="tabpanel" aria-labelledby="semantic-tab" hidden>
                     <div class="problems-toolbar"><span>Problemas</span><span id="semantic-summary">Nenhuma análise

@@ -168,7 +168,7 @@ function resetOutput() {
     tokensBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum token disponível.</td></tr>';
     symbolsBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum símbolo disponível.</td></tr>';
     problemsBody.innerHTML = '<tr class="empty-row"><td colspan="4">Execute a análise para verificar o código.</td></tr>';
-    astOutput.textContent = "// A árvore sintática aparecerá aqui.";
+    astOutput.innerHTML = '<p class="ast-empty">A árvore sintática aparecerá aqui.</p>';
     semanticSummary.textContent = "Nenhuma análise executada";
     setStatus("Pronto", "ready");
 }
@@ -203,7 +203,7 @@ async function analyzeSource() {
 
         renderTokens(result.tokens || []);
         renderSymbols(result.symbols || []);
-        astOutput.textContent = result.ast_pretty || JSON.stringify(result.ast, null, 2);
+        renderAst(result.ast, result.ast_pretty);
         renderSuccess(result.semantic);
         setStatus("Análise concluída", "ready");
     } catch (error) {
@@ -235,6 +235,58 @@ function renderSymbols(symbols) {
         appendCells(row, [symbol.order ?? symbol.ordem ?? index + 1, symbol.lexeme ?? symbol.lexema, symbol.category ?? symbol.categoria, symbol.data_type ?? symbol.tipo ?? "—", symbol.line ?? symbol.linha ?? "—"]);
         symbolsBody.appendChild(row);
     });
+}
+
+function renderAst(ast, fallbackText = "") {
+    astOutput.replaceChildren();
+
+    if (!ast || typeof ast !== "object") {
+        const fallback = document.createElement("pre");
+        fallback.className = "ast-text-fallback";
+        fallback.textContent = fallbackText || "Árvore sintática indisponível.";
+        astOutput.appendChild(fallback);
+        return;
+    }
+
+    const tree = document.createElement("div");
+    tree.className = "ast-tree";
+
+    const rootList = document.createElement("ul");
+    rootList.appendChild(createAstBranch(ast));
+    tree.appendChild(rootList);
+    astOutput.appendChild(tree);
+}
+
+function createAstBranch(node) {
+    const branch = document.createElement("li");
+    const card = document.createElement("div");
+    card.className = "ast-node";
+    card.dataset.kind = node.kind || "node";
+
+    const label = document.createElement("strong");
+    label.textContent = node.label || "Nó";
+    card.appendChild(label);
+
+    if (node.detail) {
+        const detail = document.createElement("span");
+        detail.textContent = node.detail;
+        card.appendChild(detail);
+    }
+
+    if (node.line != null) {
+        card.title = `Linha ${node.line}`;
+    }
+
+    branch.appendChild(card);
+
+    const children = Array.isArray(node.children) ? node.children : [];
+    if (children.length > 0) {
+        const childList = document.createElement("ul");
+        children.forEach((child) => childList.appendChild(createAstBranch(child)));
+        branch.appendChild(childList);
+    }
+
+    return branch;
 }
 
 function appendCells(row, values) {

@@ -78,7 +78,7 @@ class TestParser(unittest.TestCase):
 
     def test_comando_invalido(self):
         with self.assertRaises(ErroSintatico):
-            analisar("+ 3;")
+            analisar("else return 1;")
 
     def test_parentese_nao_fechado(self):
         with self.assertRaises(ErroSintatico):

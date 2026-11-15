@@ -45,9 +45,10 @@ class TestSemantico(unittest.TestCase):
         self.assertIn("Tipos incompatíveis", s.erros[0].mensagem)
 
     def test_operacao_com_texto(self):
-        s = semantico('int a = 1 + "x"; return a;')
+        s = semantico('int a = "x" * 2; return a;')
         self.assertEqual(
-            mensagens(s.erros), ["Operador '+' não pode ser aplicado a texto"]
+            mensagens(s.erros),
+            ["Operador '*' exige operandos numéricos (recebeu char* e int)"],
         )
 
     def test_modulo_com_float(self):

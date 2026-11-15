@@ -12,10 +12,24 @@ return quantidade;
 """
 
 
+def ler_arquivo(caminho):
+    """Lê o arquivo em UTF-8 (com ou sem BOM) ou, se falhar, em Windows-1252 (ANSI)."""
+    with open(caminho, "rb") as arquivo:
+        dados = arquivo.read()
+
+    try:
+        return dados.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return dados.decode("cp1252", errors="replace")
+
+
 def main(argumentos):
     if len(argumentos) > 1:
-        with open(argumentos[1], encoding="utf-8") as arquivo:
-            codigo = arquivo.read()
+        try:
+            codigo = ler_arquivo(argumentos[1])
+        except OSError as erro:
+            print(f"Não foi possível abrir '{argumentos[1]}': {erro.strerror}")
+            return 1
     else:
         codigo = CODIGO_EXEMPLO
 

@@ -51,69 +51,87 @@ class TabelaSimbolos:
         tipos = {
             "INT": "int",
             "FLOAT": "float",
+            "DOUBLE": "double",
             "CHAR": "char",
-            "VOID": "void"
+            "VOID": "void",
+            "LONG": "int",
+            "SHORT": "int",
+            "UNSIGNED": "int",
+            "SIGNED": "int",
         }
 
         palavras_reservadas = {
-            "IF",
-            "ELSE",
-            "WHILE",
-            "FOR",
-            "RETURN",
-            "DO",
-            "SWITCH",
-            "CASE",
-            "DEFAULT",
-            "BREAK",
-            "CONTINUE",
-            "SIZEOF",
-            "STRUCT",
-            "CONST"
+            "IF", "ELSE", "WHILE", "FOR", "RETURN", "DO", "SWITCH", "CASE",
+            "DEFAULT", "BREAK", "CONTINUE", "SIZEOF", "STRUCT", "CONST", "TYPEDEF",
         }
 
-        tipo_pendente = None
+        # Estado de uma declaração em andamento: "int *a, b = f(x, y);"
+        tipo_base = None            # tipo da declaração atual
+        profundidade = 0            # nível de parênteses
+        profundidade_decl = 0       # nível onde a declaração começou
+        aguardando_nome = False     # o próximo identificador é o declarado?
+        estrelas = ""
 
-        for token in tokens:
+        for i, token in enumerate(tokens):
             if token.tipo == "FIM":
                 continue
 
             if token.tipo in tipos:
-                tipo_pendente = tipos[token.tipo]
+                # "unsigned int": a última palavra define o tipo exibido,
+                # exceto quando é só um modificador depois do tipo principal.
+                if not (aguardando_nome and token.tipo in {"LONG", "SHORT", "UNSIGNED", "SIGNED"}
+                        and tipo_base not in (None, "int")):
+                    tipo_base = tipos[token.tipo]
+                profundidade_decl = profundidade
+                aguardando_nome = True
+                estrelas = ""
 
-                self.adicionar(
-                    token.lexema,
-                    "PALAVRA_RESERVADA",
-                    tipo_pendente,
-                    token.linha
-                )
-
+                self.adicionar(token.lexema, "PALAVRA_RESERVADA", tipos[token.tipo], token.linha)
                 continue
 
             if token.tipo in palavras_reservadas:
-                self.adicionar(
-                    token.lexema,
-                    "PALAVRA_RESERVADA",
-                    "-",
-                    token.linha
-                )
-
+                self.adicionar(token.lexema, "PALAVRA_RESERVADA", "-", token.linha)
                 continue
 
+            if token.tipo == "MUL" and aguardando_nome:
+                estrelas += "*"
+                continue
+
+            if token.tipo == "PAREN_ESQ":
+                profundidade += 1
+            elif token.tipo == "PAREN_DIR":
+                profundidade -= 1
+                if profundidade < profundidade_decl:
+                    tipo_base = None
+                    aguardando_nome = False
+            elif token.tipo in {"PONTO_VIRGULA", "CHAVE_ESQ", "CHAVE_DIR"}:
+                tipo_base = None
+                aguardando_nome = False
+            elif token.tipo == "VIRGULA":
+                if tipo_base is not None and profundidade == profundidade_decl:
+                    aguardando_nome = True
+                    estrelas = ""
+
             if token.tipo == "IDENTIFICADOR":
-                tipo = tipo_pendente if tipo_pendente is not None else "-"
+                proximo = tokens[i + 1] if i + 1 < len(tokens) else None
+                eh_funcao = proximo is not None and proximo.tipo == "PAREN_ESQ"
+
+                if aguardando_nome and tipo_base is not None:
+                    tipo = tipo_base + estrelas
+                else:
+                    tipo = "-"
 
                 self.adicionar(
                     token.lexema,
-                    "IDENTIFICADOR",
+                    "FUNCAO" if eh_funcao else "IDENTIFICADOR",
                     tipo,
                     token.linha
                 )
 
-                tipo_pendente = None
+                aguardando_nome = False
 
         return self
-    
+
     def exibir(self):
         print("\nTABELA DE SÍMBOLOS")
         print("-" * 70)

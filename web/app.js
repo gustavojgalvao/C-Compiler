@@ -30,7 +30,52 @@ desconto = total - 1;
 int valor = taxa * 2;
 int x = total / 0;
 return parcial;
-int sobra = 1;`
+int sobra = 1;`,
+    c_completo: `#include <stdio.h>
+#define MAX 5
+
+int soma(int v[], int n);
+
+int main(void) {
+    int numeros[MAX] = {4, 8, 15, 16, 23};
+    int i, pares = 0;
+
+    for (i = 0; i < MAX; i++) {
+        if (numeros[i] % 2 == 0) {
+            pares++;
+        }
+    }
+
+    printf("Soma: %d\\n", soma(numeros, MAX));
+    printf("Pares: %d\\n", pares);
+    return 0;
+}
+
+int soma(int v[], int n) {
+    int total = 0;
+    for (int k = 0; k < n; k++)
+        total += v[k];
+    return total;
+}`,
+    c_erros: `#include <stdio.h>
+
+int dobro(int x) {
+    return x * 2;
+}
+
+int main() {
+    int idade;
+    int v[3] = {1, 2, 3};
+
+    scanf("%d", idade);
+    if (idade = 18) {
+        printf("maior de idade\\n");
+    }
+
+    v[3] = dobro(idade, 2);
+    total = v[0];
+    return 0;
+}`
 };
 
 const $ = (id) => document.getElementById(id);
@@ -67,9 +112,19 @@ $("sample-select").addEventListener("change", (event) => {
     loadCode(SAMPLES[event.target.value]);
 });
 
+// Arquivos .c do Windows costumam estar em ANSI (Windows-1252), não em UTF-8.
+async function readSourceFile(file) {
+    const bytes = await file.arrayBuffer();
+    try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+        return new TextDecoder("windows-1252").decode(bytes);
+    }
+}
+
 $("source-file").addEventListener("change", async (event) => {
     const [file] = event.target.files;
-    if (file) loadCode(await file.text());
+    if (file) loadCode(await readSourceFile(file));
     event.target.value = "";
 });
 

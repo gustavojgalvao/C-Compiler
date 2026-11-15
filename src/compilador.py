@@ -26,13 +26,14 @@ def compilar(codigo):
     ErroSintatico). Problemas semânticos são acumulados em
     resultado.semantico.diagnosticos.
     """
-    tokens = Lexer(codigo).tokenizar()
+    lexer = Lexer(codigo)
+    tokens = lexer.tokenizar()
 
     tabela = TabelaSimbolos()
     tabela.construir(tokens)
 
     arvore = Parser(tokens).analisar()
 
-    semantico = AnalisadorSemantico().analisar(arvore)
+    semantico = AnalisadorSemantico(lexer.inclusoes).analisar(arvore)
 
     return ResultadoCompilacao(tokens, tabela, arvore, semantico)

@@ -25,8 +25,6 @@ Front-end de um compilador para um subconjunto de C, escrito em Python puro (sem
 Programas C comuns de exercício são aceitos:
 
 ```c
-#include <stdio.h>
-#define MAX 5
 
 int soma(int v[], int n);            // protótipo
 

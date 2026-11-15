@@ -4,11 +4,12 @@ from src.compilador import compilar
 from src.erros import ErroCompilacao
 
 
-CODIGO_EXEMPLO = """int quantidade = 10;
-float preco = 19.90;
-char letra = 'A';
-int erro = "texto";
-return quantidade;
+CODIGO_EXEMPLO = """double nota1, nota2, media;
+    printf("Informe as notas do aluno:\n");
+    scanf("%lf %lf", &nota1, &nota2);
+    media = (nota1 + nota2) / 2;
+    printf("A média do aluno é: %lf\n", media);
+    return 0;
 """
 
 

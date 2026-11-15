@@ -1,452 +1,226 @@
 const SAMPLES = {
-    valid: `int idade = 20; int total = 0; total = idade + 5 * 2; return total;`,
-    undeclared: `int resultado = 10; total = resultado + 5;`,
-    type_error: `int resultado = "texto";`
+    valido: `// Média ponderada de um aluno
+int nota1 = 7;
+int nota2 = 9;
+int nota3 = 6;
+int peso1 = 2;
+int peso2 = 3;
+int peso3 = 5;
+
+int somaPesos = peso1 + peso2 + peso3;
+float media = (nota1 * peso1 + nota2 * peso2 + nota3 * peso3) / (somaPesos * 1.0);
+
+/* Operações com char: 'B' é promovido para int */
+char conceito = 'B';
+int codigo = conceito + 1;
+int resto = codigo % 3;
+
+float bonus = 0.5;
+media = media + bonus * resto;
+
+int resultado;
+resultado = -(codigo - resto) * 2 + somaPesos;
+return resultado;`,
+    erros: `int total = 10;
+float taxa = 2.5;
+int parcial = total % taxa;
+int nome = "Maria";
+int total = 5;
+desconto = total - 1;
+int valor = taxa * 2;
+int x = total / 0;
+return parcial;
+int sobra = 1;`
 };
 
-const editor = document.getElementById("code-editor");
-const lineNumbers = document.getElementById("line-numbers");
-const fileInput = document.getElementById("source-file");
-const filenameLabel = document.getElementById("current-filename");
-const sourceStats = document.getElementById("source-stats");
-const sampleSelect = document.getElementById("sample-select");
-const analyzeButton = document.getElementById("btn-analyze");
-const analysisIndicator = document.getElementById("analysis-indicator");
-const analysisStatus = document.getElementById("analysis-status");
-const analysisTime = document.getElementById("analysis-time");
-const cursorPosition = document.getElementById("cursor-position");
-const tokensCount = document.getElementById("tokens-count");
-const symbolsCount = document.getElementById("symbols-count");
-const problemsCount = document.getElementById("problems-count");
-const statusErrors = document.getElementById("status-errors");
-const semanticSummary = document.getElementById("semantic-summary");
-const tokensBody = document.getElementById("tokens-body");
-const symbolsBody = document.getElementById("symbols-body");
-const problemsBody = document.getElementById("problems-body");
-const astOutput = document.getElementById("ast-output");
-const tabs = document.querySelectorAll(".output-tab");
-const pages = document.querySelectorAll(".output-page");
-const workspace = document.getElementById("workspace");
-const resizer = document.getElementById("editor-resizer");
-const toggleOutput = document.getElementById("toggle-output");
-const menuTriggers = document.querySelectorAll(".menu-trigger");
-const menuActions = document.querySelectorAll("[data-action]");
-const helpDialog = document.getElementById("help-dialog");
-const helpDialogTitle = document.getElementById("help-dialog-title");
-const helpDialogBody = document.getElementById("help-dialog-body");
-const closeHelpButton = document.getElementById("close-help");
+const $ = (id) => document.getElementById(id);
 
-let currentFilename = "main.c";
+const editor = $("code-editor");
+const lineNumbers = $("line-numbers");
+const analyzeButton = $("btn-analyze");
+const summary = $("summary");
+const tabs = document.querySelectorAll(".tab");
 
-function closeMenus(exception = null) {
-    menuTriggers.forEach((trigger) => {
-        const menu = document.getElementById(trigger.getAttribute("aria-controls"));
-        if (trigger === exception) return;
-        trigger.setAttribute("aria-expanded", "false");
-        menu.hidden = true;
-    });
+/* ---------- Editor ---------- */
+
+function updateLineNumbers() {
+    const total = editor.value.split("\n").length;
+    lineNumbers.innerHTML = Array.from({ length: total }, (_, i) => `<span>${i + 1}</span>`).join("");
 }
 
-menuTriggers.forEach((trigger) => {
-    trigger.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const menu = document.getElementById(trigger.getAttribute("aria-controls"));
-        const opening = menu.hidden;
-        closeMenus(trigger);
-        menu.hidden = !opening;
-        trigger.setAttribute("aria-expanded", String(opening));
-    });
-});
-
-document.addEventListener("click", () => closeMenus());
-document.querySelectorAll(".menu-dropdown").forEach((menu) => {
-    menu.addEventListener("click", (event) => event.stopPropagation());
-});
-
-function selectTab(button) {
-    tabs.forEach((tab) => {
-        const active = tab === button;
-        tab.classList.toggle("active", active);
-        tab.setAttribute("aria-selected", String(active));
-    });
-    pages.forEach((page) => {
-        const active = page.id === button.dataset.tab;
-        page.classList.toggle("active", active);
-        page.hidden = !active;
-    });
-}
-
-function openTabById(id) {
-    const tab = Array.from(tabs).find((item) => item.dataset.tab === id);
-    if (tab) selectTab(tab);
-}
-
-tabs.forEach((tab) => tab.addEventListener("click", () => selectTab(tab)));
-function updateEditorMetadata() {
-    const lines = editor.value.split("\n");
-    const fragment = document.createDocumentFragment();
-    lines.forEach((_, index) => {
-        const number = document.createElement("span");
-        number.textContent = index + 1;
-        fragment.appendChild(number);
-    });
-    lineNumbers.replaceChildren(fragment);
-    sourceStats.textContent = `${lines.length} ${lines.length === 1 ? "linha" : "linhas"}`;
-}
-
-function updateCursorPosition() {
-    const beforeCursor = editor.value.slice(0, editor.selectionStart);
-    const lines = beforeCursor.split("\n");
-    cursorPosition.textContent = `Ln ${lines.length}, Col ${lines.at(-1).length + 1}`;
-}
-
-editor.addEventListener("input", () => {
-    updateEditorMetadata();
-    updateCursorPosition();
-});
-editor.addEventListener("click", updateCursorPosition);
-editor.addEventListener("keyup", updateCursorPosition);
+editor.addEventListener("input", updateLineNumbers);
 editor.addEventListener("scroll", () => { lineNumbers.scrollTop = editor.scrollTop; });
 editor.addEventListener("keydown", (event) => {
     if (event.key !== "Tab") return;
     event.preventDefault();
     editor.setRangeText("    ", editor.selectionStart, editor.selectionEnd, "end");
-    updateEditorMetadata();
-    updateCursorPosition();
 });
 
-sampleSelect.addEventListener("change", () => {
-    editor.value = SAMPLES[sampleSelect.value];
-    currentFilename = `${sampleSelect.value}.c`;
-    filenameLabel.textContent = currentFilename;
-    updateEditorMetadata();
-    resetOutput();
+function loadCode(code) {
+    editor.value = code;
+    updateLineNumbers();
+    clearResults();
     editor.focus();
+}
+
+$("sample-select").addEventListener("change", (event) => {
+    loadCode(SAMPLES[event.target.value]);
 });
 
-fileInput.addEventListener("change", async () => {
-    const [file] = fileInput.files;
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".c")) {
-        setStatus("Selecione um arquivo .c", "error");
-        fileInput.value = "";
+$("source-file").addEventListener("change", async (event) => {
+    const [file] = event.target.files;
+    if (file) loadCode(await file.text());
+    event.target.value = "";
+});
+
+/* ---------- Abas ---------- */
+
+function openTab(id) {
+    tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === id));
+    document.querySelectorAll(".page").forEach((page) => page.classList.toggle("active", page.id === id));
+}
+
+tabs.forEach((tab) => tab.addEventListener("click", () => openTab(tab.dataset.tab)));
+
+/* ---------- Renderização ---------- */
+
+function fillTable(bodyId, rows, emptyText, columns) {
+    const body = $(bodyId);
+    body.replaceChildren();
+
+    if (rows.length === 0) {
+        body.innerHTML = `<tr class="empty"><td colspan="${columns}">${emptyText}</td></tr>`;
         return;
     }
 
-    editor.value = await file.text();
-    currentFilename = file.name;
-    filenameLabel.textContent = currentFilename;
-    updateEditorMetadata();
-    resetOutput();
-    setStatus("Arquivo carregado", "ready");
-});
-
-window.addEventListener("keydown", (event) => {
-    const commandKey = event.ctrlKey || event.metaKey;
-    const key = event.key.toLowerCase();
-
-    if (commandKey && key === "enter") {
-        event.preventDefault();
-        analyzeSource();
-        return;
-    }
-
-    if (commandKey && key === "n") {
-        event.preventDefault();
-        newFile();
-    } else if (commandKey && key === "o") {
-        event.preventDefault();
-        fileInput.click();
-    } else if (commandKey && key === "s") {
-        event.preventDefault();
-        saveSourceFile();
-    } else if (key === "escape") {
-        closeMenus();
-        if (helpDialog.open) helpDialog.close();
-    }
-});
-
-function newFile() {
-    editor.value = "";
-    currentFilename = "main.c";
-    filenameLabel.textContent = currentFilename;
-    updateEditorMetadata();
-    updateCursorPosition();
-    resetOutput();
-    editor.focus();
-}
-
-function clearEditor() {
-    editor.value = "";
-    updateEditorMetadata();
-    updateCursorPosition();
-    resetOutput();
-    editor.focus();
-}
-
-function saveSourceFile() {
-    const blob = new Blob([editor.value], { type: "text/x-c;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = currentFilename || "main.c";
-    link.click();
-    URL.revokeObjectURL(url);
-    setStatus("Arquivo salvo", "ready");
-}
-
-function showOutputTab(id) {
-    document.body.classList.remove("output-collapsed");
-    toggleOutput.setAttribute("aria-pressed", "false");
-    openTabById(id);
-}
-
-function showHelp(kind) {
-    if (kind === "language") {
-        helpDialogTitle.textContent = "Linguagem suportada";
-        helpDialogBody.innerHTML = `
-            <p>Este projeto analisa um subconjunto didático de C com declarações, atribuições, expressões aritméticas e retorno.</p>
-            <pre>// comentário de linha
-int idade = 20;
-float preco = 19.90;
-char letra = 'A';
-idade = idade + 2 * 3;   /* comentário de bloco */
-return -idade;</pre>
-            <p>Tipos reconhecidos: <code>int</code>, <code>float</code> e <code>char</code>. Operadores: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code> e menos unário.</p>
-            <p>A análise semântica aponta <strong>erros</strong> (variável não declarada ou redeclarada, texto atribuído a variável numérica, <code>%</code> com float) e <strong>avisos</strong> (perda de precisão float → int, variável sem valor, divisão por zero, código após <code>return</code>, variável não utilizada).</p>`;
-    } else {
-        helpDialogTitle.textContent = "Sobre o projeto";
-        helpDialogBody.innerHTML = `
-            <p><strong>Mini Compilador C</strong></p>
-            <p>Projeto acadêmico dedicado às etapas léxica, sintática e semântica. A interface apresenta tokens, tabela de símbolos, árvore sintática e diagnósticos do código.</p>
-            <p>Use <code>Ctrl + Enter</code> para analisar o conteúdo do editor.</p>`;
-    }
-
-    helpDialog.showModal();
-}
-
-menuActions.forEach((item) => {
-    item.addEventListener("click", () => {
-        closeMenus();
-
-        switch (item.dataset.action) {
-            case "new-file": newFile(); break;
-            case "open-file": fileInput.click(); break;
-            case "save-file": saveSourceFile(); break;
-            case "undo": editor.focus(); document.execCommand("undo"); updateEditorMetadata(); break;
-            case "redo": editor.focus(); document.execCommand("redo"); updateEditorMetadata(); break;
-            case "select-all": editor.focus(); editor.select(); break;
-            case "clear-editor": clearEditor(); break;
-            case "run-analysis": analyzeSource(); break;
-            case "clear-results": resetOutput(); break;
-            case "show-tokens": showOutputTab("tab-tokens"); break;
-            case "show-symbols": showOutputTab("tab-symbols"); break;
-            case "show-ast": showOutputTab("tab-ast"); break;
-            case "show-problems": showOutputTab("tab-semantic"); break;
-            case "show-language-help": showHelp("language"); break;
-            case "show-about": showHelp("about"); break;
-        }
+    rows.forEach((values) => {
+        const row = document.createElement("tr");
+        values.forEach((value) => {
+            const cell = document.createElement("td");
+            if (value && typeof value === "object") {
+                cell.textContent = value.text;
+                cell.className = value.className;
+            } else {
+                cell.textContent = String(value ?? "—");
+            }
+            row.appendChild(cell);
+        });
+        body.appendChild(row);
     });
-});
-
-closeHelpButton.addEventListener("click", () => helpDialog.close());
-helpDialog.addEventListener("click", (event) => {
-    if (event.target === helpDialog) helpDialog.close();
-});
-
-analyzeButton.addEventListener("click", analyzeSource);
-document.getElementById("problems-shortcut").addEventListener("click", () => {
-    document.body.classList.remove("output-collapsed");
-    toggleOutput.setAttribute("aria-pressed", "false");
-    openTabById("tab-semantic");
-});
-
-toggleOutput.addEventListener("click", () => {
-    const collapsed = document.body.classList.toggle("output-collapsed");
-    toggleOutput.setAttribute("aria-pressed", String(collapsed));
-    toggleOutput.title = collapsed ? "Mostrar resultados" : "Recolher resultados";
-});
-
-resizer.addEventListener("pointerdown", (event) => {
-    if (window.innerWidth <= 900) return;
-    resizer.setPointerCapture(event.pointerId);
-    resizer.classList.add("dragging");
-    document.body.style.cursor = "row-resize";
-});
-
-resizer.addEventListener("pointermove", (event) => {
-    if (!resizer.hasPointerCapture(event.pointerId)) return;
-    const rect = workspace.getBoundingClientRect();
-    const requested = event.clientY - rect.top;
-    const maximum = rect.height - 155;
-    const height = Math.max(220, Math.min(requested, maximum));
-    document.documentElement.style.setProperty("--editor-height", `${height}px`);
-});
-
-function stopResize(event) {
-    if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
-    resizer.classList.remove("dragging");
-    document.body.style.cursor = "";
-}
-resizer.addEventListener("pointerup", stopResize);
-resizer.addEventListener("pointercancel", stopResize);
-
-function setStatus(message, state) {
-    analysisStatus.textContent = message;
-    analysisIndicator.className = "status-item";
-    analysisIndicator.classList.add(state === "running" ? "status-running" : state === "error" ? "status-error" : "status-ready");
 }
 
-function resetOutput() {
-    tokensCount.textContent = "0";
-    symbolsCount.textContent = "0";
-    problemsCount.textContent = "0";
-    statusErrors.textContent = "0";
-    tokensBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum token disponível.</td></tr>';
-    symbolsBody.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum símbolo disponível.</td></tr>';
-    problemsBody.innerHTML = '<tr class="empty-row"><td colspan="4">Execute a análise para verificar o código.</td></tr>';
-    astOutput.textContent = "// A árvore sintática aparecerá aqui.";
-    semanticSummary.textContent = "Nenhuma análise executada";
-    setStatus("Pronto", "ready");
+function setSummary(text, state = "") {
+    summary.textContent = text;
+    summary.className = `summary ${state}`;
 }
 
-async function analyzeSource() {
-    const code = editor.value;
-    if (!code.trim()) {
-        renderProblem("Entrada", 1, 1, "O arquivo está vazio.");
+function plural(n, singular, pluralForm) {
+    return `${n} ${n === 1 ? singular : pluralForm}`;
+}
+
+function clearResults() {
+    setSummary("Clique em Analisar (ou Ctrl + Enter).");
+    fillTable("problems-body", [], "Nenhuma análise executada.", 4);
+    fillTable("tokens-body", [], "Nenhum token.", 5);
+    fillTable("symbols-body", [], "Nenhum símbolo.", 5);
+    $("ast-output").textContent = "";
+    ["problems-count", "tokens-count", "symbols-count"].forEach((id) => { $(id).textContent = "0"; });
+}
+
+function showProblems(problems) {
+    fillTable(
+        "problems-body",
+        problems.map((p) => [
+            p.severity === "erro"
+                ? { text: "Erro", className: "sev-error" }
+                : { text: "Aviso", className: "sev-warning" },
+            p.line,
+            p.column,
+            p.message
+        ]),
+        "Nenhum problema encontrado.",
+        4
+    );
+    $("problems-count").textContent = problems.length;
+}
+
+function showResult(result) {
+    const tokens = result.tokens || [];
+    const symbols = result.symbols || [];
+    const semantic = result.semantic || {};
+    const diagnostics = semantic.diagnostics || [];
+
+    fillTable("tokens-body", tokens.map((t, i) => [i + 1, t.tipo, t.lexema, t.linha, t.coluna]), "Nenhum token.", 5);
+    fillTable("symbols-body", symbols.map((s) => [s.ordem, s.lexema, s.categoria, s.tipo, s.linha]), "Nenhum símbolo.", 5);
+    $("tokens-count").textContent = tokens.length;
+    $("symbols-count").textContent = symbols.length;
+    $("ast-output").textContent = result.ast_pretty || "";
+
+    showProblems(diagnostics);
+
+    const errors = semantic.errors || 0;
+    const warnings = semantic.warnings || 0;
+
+    if (errors > 0) {
+        setSummary(`✗ ${plural(errors, "erro", "erros")}, ${plural(warnings, "aviso", "avisos")}.`, "error");
+    } else if (warnings > 0) {
+        setSummary(`✓ Compilou, com ${plural(warnings, "aviso", "avisos")}.`, "warning");
+    } else {
+        setSummary("✓ Compilou sem erros nem avisos.", "ok");
+    }
+
+    openTab("tab-problems");
+}
+
+function showFailure(stage, message, line, column) {
+    clearResults();
+    showProblems([{ severity: "erro", message, line, column }]);
+    setSummary(`✗ Erro na etapa ${stage}.`, "error");
+    openTab("tab-problems");
+}
+
+/* ---------- Análise ---------- */
+
+async function analyze() {
+    if (!editor.value.trim()) {
+        showFailure("Entrada", "O código está vazio.", 1, 1);
         return;
     }
 
-    const startedAt = performance.now();
     analyzeButton.disabled = true;
-    analyzeButton.classList.add("loading");
-    analyzeButton.querySelector(".button-label").textContent = "Analisando";
-    setStatus("Analisando", "running");
-    analysisTime.textContent = "…";
+    analyzeButton.textContent = "Analisando…";
 
     try {
         const response = await fetch("/api/analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code, filename: currentFilename })
+            body: JSON.stringify({ code: editor.value })
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const result = await response.json();
 
-        if (!result.success) {
-            renderFailure(result);
-            return;
-        }
-
-        renderTokens(result.tokens || []);
-        renderSymbols(result.symbols || []);
-        astOutput.textContent = result.ast_pretty || "// Árvore sintática indisponível.";
-        const semantic = result.semantic || {};
-        renderSemantic(semantic);
-        if (semantic.errors > 0) {
-            setStatus("Erro semântico", "error");
-            showOutputTab("tab-semantic");
+        if (result.success) {
+            showResult(result);
         } else {
-            setStatus(semantic.warnings > 0 ? "Análise concluída com avisos" : "Análise concluída", "ready");
+            showFailure(result.error_stage || "Análise", result.error, result.line, result.column);
         }
     } catch (error) {
-        renderProblem("Conexão", 1, 1, `API indisponível: ${error.message}`);
-        setStatus("Backend não conectado", "error");
+        showFailure("Conexão", `Servidor indisponível (${error.message}). Rode: python server.py`, "—", "—");
     } finally {
-        analysisTime.textContent = `${Math.round(performance.now() - startedAt)} ms`;
         analyzeButton.disabled = false;
-        analyzeButton.classList.remove("loading");
-        analyzeButton.querySelector(".button-label").textContent = "Analisar";
+        analyzeButton.textContent = "Analisar";
     }
 }
 
-function renderTokens(tokens) {
-    tokensBody.replaceChildren();
-    tokensCount.textContent = tokens.length;
-    tokens.forEach((token, index) => {
-        const row = document.createElement("tr");
-        appendCells(row, [index + 1, token.type || token.tipo, token.lexeme ?? token.lexema ?? token.value ?? token.valor ?? "", token.line ?? token.linha ?? "—", token.column ?? token.coluna ?? "—"]);
-        tokensBody.appendChild(row);
-    });
-}
+analyzeButton.addEventListener("click", analyze);
 
-function renderSymbols(symbols) {
-    symbolsBody.replaceChildren();
-    symbolsCount.textContent = symbols.length;
-    symbols.forEach((symbol, index) => {
-        const row = document.createElement("tr");
-        appendCells(row, [symbol.order ?? symbol.ordem ?? index + 1, symbol.lexeme ?? symbol.lexema, symbol.category ?? symbol.categoria, symbol.data_type ?? symbol.tipo ?? "—", symbol.line ?? symbol.linha ?? "—"]);
-        symbolsBody.appendChild(row);
-    });
-}
-
-function appendCells(row, values) {
-    values.forEach((value) => {
-        const cell = document.createElement("td");
-        cell.textContent = String(value);
-        row.appendChild(cell);
-    });
-}
-
-function plural(count, singular, pluralForm) {
-    return `${count} ${count === 1 ? singular : pluralForm}`;
-}
-
-function renderSemantic(semantic = {}) {
-    const diagnostics = semantic.diagnostics || [];
-    const errors = semantic.errors ?? diagnostics.filter((d) => d.severity === "erro").length;
-    const warnings = semantic.warnings ?? diagnostics.filter((d) => d.severity === "aviso").length;
-
-    problemsBody.replaceChildren();
-
-    if (diagnostics.length === 0) {
-        const row = document.createElement("tr");
-        const severity = document.createElement("td");
-        severity.className = "severity-ok";
-        severity.textContent = "OK";
-        row.appendChild(severity);
-        appendCells(row, ["—", "—", semantic.message || "Nenhuma inconsistência semântica encontrada."]);
-        problemsBody.appendChild(row);
+window.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        analyze();
     }
+});
 
-    diagnostics.forEach((diagnostic) => {
-        const row = document.createElement("tr");
-        const severity = document.createElement("td");
-        const isError = diagnostic.severity === "erro";
-        severity.className = isError ? "severity-error" : "severity-warning";
-        severity.textContent = isError ? "ERRO" : "AVISO";
-        row.appendChild(severity);
-        appendCells(row, [diagnostic.line ?? "—", diagnostic.column ?? "—", diagnostic.message]);
-        problemsBody.appendChild(row);
-    });
-
-    problemsCount.textContent = String(diagnostics.length);
-    statusErrors.textContent = String(errors);
-    semanticSummary.textContent = `${plural(errors, "erro", "erros")}, ${plural(warnings, "aviso", "avisos")}`;
-}
-
-function renderProblem(stage, line, column, description) {
-    problemsBody.replaceChildren();
-    const row = document.createElement("tr");
-    const severity = document.createElement("td");
-    severity.className = "severity-error";
-    severity.textContent = "ERRO";
-    row.appendChild(severity);
-    appendCells(row, [line ?? "—", column ?? "—", `[${stage}] ${description}`]);
-    problemsBody.appendChild(row);
-    problemsCount.textContent = "1";
-    statusErrors.textContent = "1";
-    semanticSummary.textContent = "1 erro";
-    document.body.classList.remove("output-collapsed");
-    toggleOutput.setAttribute("aria-pressed", "false");
-    openTabById("tab-semantic");
-}
-
-function renderFailure(result) {
-    const stage = result.error_stage || "Análise";
-    renderProblem(stage, result.line, result.column, result.error);
-    setStatus(`Erro ${stage.toLowerCase()}`, "error");
-}
-
-updateEditorMetadata();
-updateCursorPosition();
+updateLineNumbers();
+clearResults();

@@ -4,209 +4,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="dark">
     <title>Mini Compilador C</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
-        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <header class="topbar">
-        <div class="topbar-left">
-            <a class="brand" href="/">
-                <strong>Mini Compilador C</strong>
-            </a>
-            <nav class="app-menu" aria-label="Menu principal">
-                <div class="menu-group">
-                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-file">Arquivo</button>
-                    <div class="menu-dropdown" id="menu-file" role="menu" hidden>
-                        <button type="button" role="menuitem" data-action="new-file"><span>Novo arquivo</span><kbd>Ctrl N</kbd></button>
-                        <button type="button" role="menuitem" data-action="open-file"><span>Abrir .c</span><kbd>Ctrl O</kbd></button>
-                        <button type="button" role="menuitem" data-action="save-file"><span>Salvar cópia</span><kbd>Ctrl S</kbd></button>
-                    </div>
-                </div>
-                <div class="menu-group">
-                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-edit">Editar</button>
-                    <div class="menu-dropdown" id="menu-edit" role="menu" hidden>
-                        <button type="button" role="menuitem" data-action="undo"><span>Desfazer</span><kbd>Ctrl Z</kbd></button>
-                        <button type="button" role="menuitem" data-action="redo"><span>Refazer</span><kbd>Ctrl Y</kbd></button>
-                        <div class="menu-separator"></div>
-                        <button type="button" role="menuitem" data-action="select-all"><span>Selecionar tudo</span><kbd>Ctrl A</kbd></button>
-                        <button type="button" role="menuitem" data-action="clear-editor"><span>Limpar editor</span></button>
-                    </div>
-                </div>
-                <div class="menu-group">
-                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-analyze">Analisar</button>
-                    <div class="menu-dropdown" id="menu-analyze" role="menu" hidden>
-                        <button type="button" role="menuitem" data-action="run-analysis"><span>Executar análise</span><kbd>Ctrl Enter</kbd></button>
-                        <button type="button" role="menuitem" data-action="clear-results"><span>Limpar resultados</span></button>
-                        <div class="menu-separator"></div>
-                        <button type="button" role="menuitem" data-action="show-tokens"><span>Mostrar tokens</span></button>
-                        <button type="button" role="menuitem" data-action="show-symbols"><span>Mostrar símbolos</span></button>
-                        <button type="button" role="menuitem" data-action="show-ast"><span>Mostrar AST</span></button>
-                        <button type="button" role="menuitem" data-action="show-problems"><span>Mostrar problemas</span></button>
-                    </div>
-                </div>
-                <div class="menu-group">
-                    <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="menu-help">Ajuda</button>
-                    <div class="menu-dropdown" id="menu-help" role="menu" hidden>
-                        <button type="button" role="menuitem" data-action="show-language-help"><span>Linguagem suportada</span></button>
-                        <button type="button" role="menuitem" data-action="show-about"><span>Sobre o projeto</span></button>
-                    </div>
-                </div>
-            </nav>
-        </div>
-
-        <div class="topbar-actions">
-            <select id="sample-select" class="control-select" aria-label="Escolher exemplo">
-                <option value="valid">Código válido</option>
-                <option value="undeclared">Variável não declarada</option>
-                <option value="type_error">Tipos incompatíveis</option>
+        <h1>Mini Compilador C</h1>
+        <div class="actions">
+            <select id="sample-select" aria-label="Exemplos">
+                <option value="" selected disabled>Exemplos</option>
+                <option value="valido">Programa válido</option>
+                <option value="erros">Programa com erros</option>
             </select>
-            <label class="secondary-button" for="source-file">Abrir arquivo</label>
-            <input id="source-file" type="file" accept=".c,text/x-c" hidden>
-            <button id="btn-analyze" class="primary-button" type="button">
-                <span class="play-icon" aria-hidden="true"></span>
-                <span class="button-label">Analisar</span>
-                <kbd>Ctrl ↵</kbd>
-            </button>
-            <button id="toggle-output" class="icon-button" type="button" title="Recolher resultados"
-                aria-label="Recolher resultados" aria-pressed="false">
-                <span class="panel-icon" aria-hidden="true"></span>
-            </button>
+            <label class="button" for="source-file">Abrir .c</label>
+            <input id="source-file" type="file" accept=".c" hidden>
+            <button id="btn-analyze" class="button primary" type="button" title="Ctrl + Enter">Analisar</button>
         </div>
     </header>
 
-    <main class="workspace" id="workspace">
-        <section class="editor-panel" aria-label="Editor de código">
-            <div class="editor-tabs">
-                <div class="file-tab active">
-                    <span class="c-file-icon">C</span>
-                    <span id="current-filename">main.c</span>
-                    <i class="dirty-dot" aria-hidden="true"></i>
-                </div>
-                <div class="editor-meta" id="source-stats">3 linhas</div>
-            </div>
-            <div class="editor-body">
-                <div id="line-numbers" class="line-numbers" aria-hidden="true">
-                    <span>1</span><span>2</span><span>3</span>
-                </div>
+    <main class="workspace">
+        <section class="panel">
+            <div class="editor">
+                <div id="line-numbers" class="line-numbers" aria-hidden="true"></div>
                 <textarea id="code-editor" aria-label="Código-fonte C" spellcheck="false" autocomplete="off"
                     autocapitalize="off">int a = 10;
 int b = 5;
-int resultado = a + b;</textarea>
+int resultado = a + b;
+return resultado;</textarea>
             </div>
         </section>
 
-        <div id="editor-resizer" class="panel-resizer" role="separator" aria-label="Redimensionar editor"
-            aria-orientation="horizontal" tabindex="0"></div>
+        <section class="panel">
+            <p id="summary" class="summary">Clique em <strong>Analisar</strong> (ou Ctrl + Enter).</p>
 
-        <section class="output-panel" id="output-panel" aria-label="Resultados da análise">
-            <nav class="output-tabs" role="tablist" aria-label="Resultados">
-                <button class="output-tab active" id="tokens-tab" role="tab" aria-selected="true"
-                    aria-controls="tab-tokens" data-tab="tab-tokens">Tokens <span id="tokens-count">0</span></button>
-                <button class="output-tab" id="symbols-tab" role="tab" aria-selected="false" aria-controls="tab-symbols"
-                    data-tab="tab-symbols">Símbolos <span id="symbols-count">0</span></button>
-                <button class="output-tab" id="ast-tab" role="tab" aria-selected="false" aria-controls="tab-ast"
-                    data-tab="tab-ast">AST</button>
-                <button class="output-tab" id="semantic-tab" role="tab" aria-selected="false"
-                    aria-controls="tab-semantic" data-tab="tab-semantic">Semântica <span
-                        id="problems-count">0</span></button>
+            <nav class="tabs" role="tablist">
+                <button class="tab active" role="tab" data-tab="tab-problems">Problemas <span id="problems-count">0</span></button>
+                <button class="tab" role="tab" data-tab="tab-tokens">Tokens <span id="tokens-count">0</span></button>
+                <button class="tab" role="tab" data-tab="tab-symbols">Símbolos <span id="symbols-count">0</span></button>
+                <button class="tab" role="tab" data-tab="tab-ast">Árvore</button>
             </nav>
 
-            <div class="output-content">
-                <section class="output-page active" id="tab-tokens" role="tabpanel" aria-labelledby="tokens-tab">
-                    <div class="table-scroller">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Tipo</th>
-                                    <th>Lexema</th>
-                                    <th>Linha</th>
-                                    <th>Coluna</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tokens-body">
-                                <tr class="empty-row">
-                                    <td colspan="5">Nenhum token disponível.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-                <section class="output-page" id="tab-symbols" role="tabpanel" aria-labelledby="symbols-tab" hidden>
-                    <div class="table-scroller">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Lexema</th>
-                                    <th>Categoria</th>
-                                    <th>Tipo</th>
-                                    <th>Linha</th>
-                                </tr>
-                            </thead>
-                            <tbody id="symbols-body">
-                                <tr class="empty-row">
-                                    <td colspan="5">Nenhum símbolo disponível.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-                <section class="output-page" id="tab-ast" role="tabpanel" aria-labelledby="ast-tab" hidden>
-                    <pre id="ast-output" class="ast-output">// A árvore sintática aparecerá aqui.</pre>
-                </section>
-                <section class="output-page" id="tab-semantic" role="tabpanel" aria-labelledby="semantic-tab" hidden>
-                    <div class="problems-toolbar"><span>Problemas</span><span id="semantic-summary">Nenhuma análise
-                            executada</span></div>
-                    <div class="table-scroller">
-                        <table class="data-table problems-table">
-                            <thead>
-                                <tr>
-                                    <th>Severidade</th>
-                                    <th>Linha</th>
-                                    <th>Coluna</th>
-                                    <th>Descrição</th>
-                                </tr>
-                            </thead>
-                            <tbody id="problems-body">
-                                <tr class="empty-row">
-                                    <td colspan="4">Execute a análise para verificar o código.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+            <div class="tab-content">
+                <div class="page active" id="tab-problems">
+                    <table>
+                        <thead><tr><th></th><th>Linha</th><th>Coluna</th><th>Descrição</th></tr></thead>
+                        <tbody id="problems-body"></tbody>
+                    </table>
+                </div>
+                <div class="page" id="tab-tokens">
+                    <table>
+                        <thead><tr><th>#</th><th>Tipo</th><th>Lexema</th><th>Linha</th><th>Coluna</th></tr></thead>
+                        <tbody id="tokens-body"></tbody>
+                    </table>
+                </div>
+                <div class="page" id="tab-symbols">
+                    <table>
+                        <thead><tr><th>#</th><th>Lexema</th><th>Categoria</th><th>Tipo</th><th>Linha</th></tr></thead>
+                        <tbody id="symbols-body"></tbody>
+                    </table>
+                </div>
+                <div class="page" id="tab-ast">
+                    <pre id="ast-output"></pre>
+                </div>
             </div>
         </section>
     </main>
-
-    <footer class="statusbar">
-        <div class="status-left">
-            <span id="analysis-indicator" class="status-item status-ready"><i></i><span
-                    id="analysis-status">Pronto</span></span>
-            <button class="status-item status-button" id="problems-shortcut" type="button"><span
-                    class="error-symbol">×</span> <b id="status-errors">0</b> erros</button>
-        </div>
-        <div class="status-right">
-            <span id="cursor-position">Ln 1, Col 1</span><span>Espaços: 4</span><span>UTF-8</span><span>C</span><span
-                id="analysis-time">—</span>
-        </div>
-    </footer>
-
-    <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-dialog-title">
-        <header>
-            <strong id="help-dialog-title">Ajuda</strong>
-            <button id="close-help" class="dialog-close" type="button" aria-label="Fechar">×</button>
-        </header>
-        <div id="help-dialog-body" class="help-dialog-body"></div>
-    </dialog>
 
     <script src="app.js"></script>
 </body>

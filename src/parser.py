@@ -6,25 +6,32 @@ from src.arvore_sintatica import (
     Caractere,
     Texto,
     Identificador,
+    OperacaoUnaria,
     OperacaoBinaria,
     Atribuicao,
     Retorno
 )
+from src.erros import ErroSintatico
 
-class ErroSintatico(Exception):
-    def __init__(self, mensagem, token):
-        self.linha = token.linha
-        self.coluna = token.coluna
+__all__ = ["Parser", "ErroSintatico"]
 
-        texto = (
-            f"{mensagem} "
-            f"na linha {self.linha}, "
-            f"coluna {self.coluna}"
-        )
-
-        super().__init__(texto)
 
 class Parser:
+    """
+    Gramática reconhecida:
+
+        programa    -> comando* FIM
+        comando     -> declaracao | atribuicao | retorno
+        declaracao  -> ("int" | "float" | "char") IDENT ("=" expressao)? ";"
+        atribuicao  -> IDENT "=" expressao ";"
+        retorno     -> "return" expressao ";"
+        expressao   -> termo (("+" | "-") termo)*
+        termo       -> fator (("*" | "/" | "%") fator)*
+        fator       -> ("+" | "-") fator
+                     | NUMERO | NUMERO_REAL | CARACTERE | TEXTO | IDENT
+                     | "(" expressao ")"
+    """
+
     def __init__(self, tokens):
         self.tokens = tokens
         self.posicao = 0
@@ -39,7 +46,7 @@ class Parser:
             self.posicao += 1
         return token
 
-    def verificar (self, tipo):
+    def verificar(self, tipo):
         return self.token_atual().tipo == tipo
 
     def consumir(self, tipo, mensagem):
@@ -91,7 +98,7 @@ class Parser:
                 "Esperando uma declaração de variável",
                 token_tipo
             )
-        
+
         self.avancar()
 
         token_nome = self.consumir(
@@ -104,16 +111,18 @@ class Parser:
         if self.verificar("IGUAL"):
             self.avancar()
             inicializador = self.ler_expressao()
-        
+
         self.consumir(
-            "PONTO_VIRGULA", 
-            "Esperado ';' ao final da declaração")
+            "PONTO_VIRGULA",
+            "Esperado ';' ao final da declaração"
+        )
 
         return Declaracao(
             token_tipo.lexema,
             token_nome.lexema,
             inicializador,
-            token_tipo.linha
+            token_tipo.linha,
+            token_nome.coluna
         )
 
     def ler_atribuicao(self):
@@ -137,7 +146,8 @@ class Parser:
         return Atribuicao(
             token_nome.lexema,
             valor,
-            token_nome.linha
+            token_nome.linha,
+            token_nome.coluna
         )
 
     def ler_retorno(self):
@@ -155,7 +165,8 @@ class Parser:
 
         return Retorno(
             valor,
-            token_return.linha
+            token_return.linha,
+            token_return.coluna
         )
 
     def ler_expressao(self):
@@ -172,7 +183,8 @@ class Parser:
                 esquerda,
                 operador.lexema,
                 direita,
-                operador.linha
+                operador.linha,
+                operador.coluna
             )
 
         return esquerda
@@ -192,7 +204,8 @@ class Parser:
                 esquerda,
                 operador.lexema,
                 direita,
-                operador.linha
+                operador.linha,
+                operador.coluna
             )
 
         return esquerda
@@ -200,44 +213,32 @@ class Parser:
     def ler_fator(self):
         token = self.token_atual()
 
-        if token.tipo == "NUMERO":
+        if token.tipo in {"MAIS", "MENOS"}:
             self.avancar()
+            operando = self.ler_fator()
 
-            return Numero(
+            return OperacaoUnaria(
                 token.lexema,
-                token.linha
+                operando,
+                token.linha,
+                token.coluna
             )
 
-        if token.tipo == "NUMERO_REAL":
+        literais = {
+            "NUMERO": Numero,
+            "NUMERO_REAL": NumeroReal,
+            "CARACTERE": Caractere,
+            "TEXTO": Texto,
+            "IDENTIFICADOR": Identificador,
+        }
+
+        if token.tipo in literais:
             self.avancar()
 
-            return NumeroReal(
+            return literais[token.tipo](
                 token.lexema,
-                token.linha
-            )
-
-        if token.tipo == "CARACTERE":
-            self.avancar()
-
-            return Caractere(
-                token.lexema,
-                token.linha
-            )
-
-        if token.tipo == "TEXTO":
-            self.avancar()
-
-            return Texto(
-                token.lexema,
-                token.linha
-            )
-
-        if token.tipo == "IDENTIFICADOR":
-            self.avancar()
-
-            return Identificador(
-                token.lexema,
-                token.linha
+                token.linha,
+                token.coluna
             )
 
         if token.tipo == "PAREN_ESQ":

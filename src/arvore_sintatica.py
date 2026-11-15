@@ -13,12 +13,14 @@ class Programa:
 
         return "\n".join(linhas)
 
+
 class Declaracao:
-    def __init__(self, tipo, nome, inicializador, linha):
+    def __init__(self, tipo, nome, inicializador, linha, coluna=None):
         self.tipo = tipo
         self.nome = nome
         self.inicializador = inicializador
         self.linha = linha
+        self.coluna = coluna
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel
@@ -34,54 +36,83 @@ class Declaracao:
 
         return texto
 
+
 class Numero:
-    def __init__(self, valor, linha):
+    def __init__(self, valor, linha, coluna=None):
         self.valor = valor
         self.linha = linha
+        self.coluna = coluna
         self.tipo = "int"
-    
+
     def formatar(self, nivel=0):
         espacos = "  " * nivel
         return f"{espacos}Numero ({self.valor})"
 
+
 class NumeroReal:
-    def __init__(self, valor, linha):
+    def __init__(self, valor, linha, coluna=None):
         self.valor = valor
         self.linha = linha
+        self.coluna = coluna
         self.tipo = "float"
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel
         return f"{espacos}NumeroReal ({self.valor})"
 
+
 class Caractere:
-    def __init__(self, valor, linha):
+    def __init__(self, valor, linha, coluna=None):
         self.valor = valor
         self.linha = linha
-        self.tipo = 'char'
+        self.coluna = coluna
+        self.tipo = "char"
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel
         return f"{espacos}Caractere ({self.valor})"
 
+
 class Texto:
-    def __init__(self, valor, linha):
+    def __init__(self, valor, linha, coluna=None):
         self.valor = valor
         self.linha = linha
-        self.tipo = 'texto'
+        self.coluna = coluna
+        self.tipo = "texto"
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel
         return f"{espacos}Texto ({self.valor})"
 
+
 class Identificador:
-    def __init__(self, nome, linha):
+    def __init__(self, nome, linha, coluna=None):
         self.nome = nome
         self.linha = linha
+        self.coluna = coluna
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel
         return f"{espacos}Identificador ({self.nome})"
+
+
+class OperacaoUnaria:
+    def __init__(self, operador, operando, linha, coluna=None):
+        self.operador = operador
+        self.operando = operando
+        self.linha = linha
+        self.coluna = coluna
+
+    def formatar(self, nivel=0):
+        espacos = "  " * nivel
+
+        linhas = [
+            f"{espacos}OperacaoUnaria ({self.operador})",
+            self.operando.formatar(nivel + 1)
+        ]
+
+        return "\n".join(linhas)
+
 
 class OperacaoBinaria:
     def __init__(
@@ -89,16 +120,18 @@ class OperacaoBinaria:
         esquerda,
         operador,
         direita,
-        linha
+        linha,
+        coluna=None
     ):
         self.esquerda = esquerda
         self.operador = operador
         self.direita = direita
         self.linha = linha
+        self.coluna = coluna
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel
-        
+
         linhas = [
             f"{espacos}OperacaoBinaria ({self.operador})",
             self.esquerda.formatar(nivel + 1),
@@ -107,11 +140,13 @@ class OperacaoBinaria:
 
         return "\n".join(linhas)
 
+
 class Atribuicao:
-    def __init__(self, nome, valor, linha):
+    def __init__(self, nome, valor, linha, coluna=None):
         self.nome = nome
         self.valor = valor
         self.linha = linha
+        self.coluna = coluna
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel
@@ -122,11 +157,13 @@ class Atribuicao:
         ]
 
         return "\n".join(linhas)
-    
+
+
 class Retorno:
-    def __init__(self, valor, linha):
+    def __init__(self, valor, linha, coluna=None):
         self.valor = valor
         self.linha = linha
+        self.coluna = coluna
 
     def formatar(self, nivel=0):
         espacos = "  " * nivel

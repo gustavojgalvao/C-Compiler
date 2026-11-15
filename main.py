@@ -1,30 +1,58 @@
-from src.lexer import Lexer
-from src.tabela_simbolos import TabelaSimbolos
-from src.parser import Parser
+"""
+Uso:
+    python main.py                # analisa o programa de exemplo abaixo
+    python main.py arquivo.c      # analisa um arquivo
+"""
 
-codigo = """int quantidade = 10;
+import sys
+
+from src.compilador import compilar
+from src.erros import ErroCompilacao
+
+
+CODIGO_EXEMPLO = """int quantidade = 10;
 float preco = 19.90;
 char letra = 'A';
 int erro = "texto";
 return quantidade;
 """
 
-lexer = Lexer(codigo)
-tokens = lexer.tokenizar()
 
-print("TOKENS")
-print("-" * 70)
- 
-for token in tokens:
-    print(token)
+def main(argumentos):
+    if len(argumentos) > 1:
+        with open(argumentos[1], encoding="utf-8") as arquivo:
+            codigo = arquivo.read()
+    else:
+        codigo = CODIGO_EXEMPLO
 
-tabela = TabelaSimbolos()
-tabela.construir(tokens)
-tabela.exibir()
+    try:
+        resultado = compilar(codigo)
+    except ErroCompilacao as erro:
+        print(f"ERRO {erro.etapa.upper()}: {erro}")
+        return 1
 
-parser = Parser(tokens)
-arvore = parser.analisar()
+    print("TOKENS")
+    print("-" * 70)
 
-print("\nÁRVORE SINTÁTICA")
-print("-" * 70)
-print(arvore.formatar())
+    for token in resultado.tokens:
+        print(token)
+
+    resultado.tabela.exibir()
+
+    print("\nÁRVORE SINTÁTICA")
+    print("-" * 70)
+    print(resultado.arvore.formatar())
+
+    print("\nANÁLISE SEMÂNTICA")
+    print("-" * 70)
+
+    for diagnostico in resultado.semantico.diagnosticos:
+        print(diagnostico)
+
+    print(resultado.semantico.resumo())
+
+    return 0 if resultado.sucesso else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

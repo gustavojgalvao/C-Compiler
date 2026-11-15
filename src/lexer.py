@@ -1,4 +1,53 @@
 from src.token import Token
+from src.erros import ErroLexico
+
+
+PALAVRAS_RESERVADAS = {
+    "int": "INT",
+    "float": "FLOAT",
+    "char": "CHAR",
+    "void": "VOID",
+    "if": "IF",
+    "else": "ELSE",
+    "while": "WHILE",
+    "for": "FOR",
+    "return": "RETURN",
+    "do": "DO",
+    "switch": "SWITCH",
+    "case": "CASE",
+    "default": "DEFAULT",
+    "break": "BREAK",
+    "continue": "CONTINUE",
+    "sizeof": "SIZEOF",
+    "struct": "STRUCT",
+    "const": "CONST",
+}
+
+TOKENS_SIMPLES = {
+    "+": "MAIS",
+    "-": "MENOS",
+    "*": "MUL",
+    "/": "DIV",
+    "(": "PAREN_ESQ",
+    ")": "PAREN_DIR",
+    ";": "PONTO_VIRGULA",
+    "{": "CHAVE_ESQ",
+    "}": "CHAVE_DIR",
+    "=": "IGUAL",
+    "!": "NAO",
+    "<": "MENOR",
+    ">": "MAIOR",
+    "&": "E",
+    "|": "OU",
+    "^": "XOR",
+    "%": "MOD",
+    ".": "PONTO",
+    ",": "VIRGULA",
+    "#": "CERQUILHA",
+    "@": "ARROBA",
+    "\\": "BARRA_INV",
+}
+
 
 class Lexer:
     def __init__(self, code):
@@ -7,7 +56,7 @@ class Lexer:
         self.tamanho = len(code)
         self.linha = 1
         self.coluna = 1
-    
+
     def caractere_atual(self):
         if self.cursor < self.tamanho:
             return self.codigo[self.cursor]
@@ -22,7 +71,7 @@ class Lexer:
 
     def avancar(self):
         char = self.caractere_atual()
-        
+
         if char is None:
             return
 
@@ -35,10 +84,48 @@ class Lexer:
             self.coluna += 1
 
     def pular_espacos(self):
-        while self.caractere_atual()  is not None and self.caractere_atual() in " \t\n\r":
-            self.avancar()
+        """Ignora espaços em branco e comentários (// e /* */)."""
+        while self.caractere_atual() is not None:
+            char = self.caractere_atual()
 
-#Método para tokens de um caractere
+            if char in " \t\n\r":
+                self.avancar()
+                continue
+
+            if char == "/" and self.espiar() == "/":
+                while (
+                    self.caractere_atual() is not None
+                    and self.caractere_atual() != "\n"
+                ):
+                    self.avancar()
+                continue
+
+            if char == "/" and self.espiar() == "*":
+                linha_inicio = self.linha
+                coluna_inicio = self.coluna
+
+                self.avancar()
+                self.avancar()
+
+                while not (
+                    self.caractere_atual() == "*"
+                    and self.espiar() == "/"
+                ):
+                    if self.caractere_atual() is None:
+                        raise ErroLexico(
+                            "Comentário de bloco não finalizado",
+                            linha_inicio,
+                            coluna_inicio
+                        )
+                    self.avancar()
+
+                self.avancar()
+                self.avancar()
+                continue
+
+            break
+
+    # Método para tokens de um caractere
     def criar_token_simples(self, tipo):
         lexema = self.caractere_atual()
         linha_inicio = self.linha
@@ -57,13 +144,13 @@ class Lexer:
         self.pular_espacos()
 
         char = self.caractere_atual()
-        
+
         if char is None:
             return Token("FIM", "", self.linha, self.coluna)
 
         if char.isdigit():
             return self.ler_numero()
-        
+
         if char.isalpha() or char == "_":
             return self.ler_palavra()
 
@@ -73,75 +160,13 @@ class Lexer:
         if char == '"':
             return self.ler_texto()
 
-        if char == "+":
-            return self.criar_token_simples("MAIS")
+        if char in TOKENS_SIMPLES:
+            return self.criar_token_simples(TOKENS_SIMPLES[char])
 
-        if char == "-":
-            return self.criar_token_simples("MENOS")
-
-        if char == "*":
-            return self.criar_token_simples("MUL")
-
-        if char == "/":
-            return self.criar_token_simples("DIV")
-
-        if char == "(":
-            return self.criar_token_simples("PAREN_ESQ")
-
-        if char == ")":
-            return self.criar_token_simples("PAREN_DIR")
-
-        if char == ";":
-            return self.criar_token_simples("PONTO_VIRGULA")
-
-        if char == "{":
-            return self.criar_token_simples("CHAVE_ESQ")
-
-        if char == "}":
-            return self.criar_token_simples("CHAVE_DIR")
-
-        if char == "=":
-            return self.criar_token_simples("IGUAL")
-
-        if char == "!":
-            return self.criar_token_simples("NAO")
-
-        if char == "<":
-            return self.criar_token_simples("MENOR")
-
-        if char == ">":
-            return self.criar_token_simples("MAIOR")
-
-        if char == "&":
-            return self.criar_token_simples("E")
-
-        if char == "|":
-            return self.criar_token_simples("OU")
-
-        if char == "^":
-            return self.criar_token_simples("XOR")
-
-        if char == "%":
-            return self.criar_token_simples("MOD")
-
-        if char == ".":
-            return self.criar_token_simples("PONTO")
-
-        if char == ",":
-            return self.criar_token_simples("VIRGULA")
-
-        if char == "#":
-            return self.criar_token_simples("CERQUILHA")
-
-        if char == "@":
-            return self.criar_token_simples("ARROBA")
-
-        if char == "\\":
-            return self.criar_token_simples("BARRA_INV")
-        
-        raise Exception(
-            f"Caractere inválido na linha {self.linha}, "
-            f"coluna {self.coluna}: {char!r}"
+        raise ErroLexico(
+            f"Caractere inválido {char!r}",
+            self.linha,
+            self.coluna
         )
 
     def ler_numero(self):
@@ -172,6 +197,15 @@ class Lexer:
 
             break
 
+        atual = self.caractere_atual()
+
+        if atual is not None and (atual.isalpha() or atual == "_"):
+            raise ErroLexico(
+                f"Número malformado '{numero}{atual}'",
+                linha_inicio,
+                coluna_inicio
+            )
+
         tipo = "NUMERO_REAL" if possui_ponto else "NUMERO"
 
         return Token(
@@ -197,28 +231,7 @@ class Lexer:
             palavra += self.caractere_atual()
             self.avancar()
 
-        palavras_reservadas = {
-            "int": "INT",
-            "float": "FLOAT",
-            "char": "CHAR",
-            "void": "VOID",
-            "if": "IF",
-            "else": "ELSE",
-            "while": "WHILE",
-            "for": "FOR",
-            "return": "RETURN",
-            "do": "DO",
-            "switch": "SWITCH",
-            "case": "CASE",
-            "default": "DEFAULT",
-            "break": "BREAK",
-            "continue": "CONTINUE",
-            "sizeof": "SIZEOF",
-            "struct": "STRUCT",
-            "const": "CONST",
-        }
-
-        tipo = palavras_reservadas.get(
+        tipo = PALAVRAS_RESERVADAS.get(
             palavra,
             "IDENTIFICADOR"
         )
@@ -234,18 +247,20 @@ class Lexer:
         char = self.caractere_atual()
 
         if char is None or char == "\n" or char == "'":
-            raise Exception(
-                f"Caractere invalido na linha {linha_inicio}, "
-                f"coluna {coluna_inicio}"
+            raise ErroLexico(
+                "Literal de caractere inválido",
+                linha_inicio,
+                coluna_inicio
             )
 
         valor = char
         self.avancar()
 
         if self.caractere_atual() != "'":
-            raise Exception(
-                f"Esperada aspas simples na linha {self.linha}, "
-                f"coluna {self.coluna}"
+            raise ErroLexico(
+                "Esperada aspas simples de fechamento",
+                self.linha,
+                self.coluna
             )
 
         self.avancar()
@@ -270,19 +285,21 @@ class Lexer:
             and self.caractere_atual() != '"'
         ):
             if self.caractere_atual() == "\n":
-                raise Exception(
-                    f"Texto não finalizado na linha {linha_inicio}, "
-                    f"coluna {coluna_inicio}"
+                raise ErroLexico(
+                    "Texto não finalizado",
+                    linha_inicio,
+                    coluna_inicio
                 )
 
             texto += self.caractere_atual()
             self.avancar()
 
         if self.caractere_atual() is None:
-            raise Exception(
-            f"Texto não finalizado na linha {linha_inicio}, "
-            f"coluna {coluna_inicio}"
-        )
+            raise ErroLexico(
+                "Texto não finalizado",
+                linha_inicio,
+                coluna_inicio
+            )
 
         self.avancar()
 

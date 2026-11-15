@@ -237,6 +237,7 @@ textarea:focus-visible,
 .problems-toolbar span:first-child { color: var(--text-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
 .problems-table .severity-error { color: var(--error); }
 .problems-table .severity-ok { color: var(--success); }
+.problems-table .severity-warning { color: var(--warning); }
 
 .statusbar {
     height: 24px;

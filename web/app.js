@@ -206,12 +206,14 @@ function showHelp(kind) {
         helpDialogTitle.textContent = "Linguagem suportada";
         helpDialogBody.innerHTML = `
             <p>Este projeto analisa um subconjunto didático de C com declarações, atribuições, expressões aritméticas e retorno.</p>
-            <pre>int idade = 20;
+            <pre>// comentário de linha
+int idade = 20;
 float preco = 19.90;
 char letra = 'A';
-idade = idade + 2 * 3;
-return idade;</pre>
-            <p>Tipos reconhecidos: <code>int</code>, <code>float</code> e <code>char</code>. Operadores: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> e <code>%</code>.</p>`;
+idade = idade + 2 * 3;   /* comentário de bloco */
+return -idade;</pre>
+            <p>Tipos reconhecidos: <code>int</code>, <code>float</code> e <code>char</code>. Operadores: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code> e menos unário.</p>
+            <p>A análise semântica aponta <strong>erros</strong> (variável não declarada ou redeclarada, texto atribuído a variável numérica, <code>%</code> com float) e <strong>avisos</strong> (perda de precisão float → int, variável sem valor, divisão por zero, código após <code>return</code>, variável não utilizada).</p>`;
     } else {
         helpDialogTitle.textContent = "Sobre o projeto";
         helpDialogBody.innerHTML = `
@@ -339,8 +341,14 @@ async function analyzeSource() {
         renderTokens(result.tokens || []);
         renderSymbols(result.symbols || []);
         astOutput.textContent = result.ast_pretty || "// Árvore sintática indisponível.";
-        renderSuccess(result.semantic);
-        setStatus("Análise concluída", "ready");
+        const semantic = result.semantic || {};
+        renderSemantic(semantic);
+        if (semantic.errors > 0) {
+            setStatus("Erro semântico", "error");
+            showOutputTab("tab-semantic");
+        } else {
+            setStatus(semantic.warnings > 0 ? "Análise concluída com avisos" : "Análise concluída", "ready");
+        }
     } catch (error) {
         renderProblem("Conexão", 1, 1, `API indisponível: ${error.message}`);
         setStatus("Backend não conectado", "error");
@@ -380,18 +388,41 @@ function appendCells(row, values) {
     });
 }
 
-function renderSuccess(semantic = {}) {
+function plural(count, singular, pluralForm) {
+    return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+function renderSemantic(semantic = {}) {
+    const diagnostics = semantic.diagnostics || [];
+    const errors = semantic.errors ?? diagnostics.filter((d) => d.severity === "erro").length;
+    const warnings = semantic.warnings ?? diagnostics.filter((d) => d.severity === "aviso").length;
+
     problemsBody.replaceChildren();
-    const row = document.createElement("tr");
-    const severity = document.createElement("td");
-    severity.className = "severity-ok";
-    severity.textContent = "OK";
-    row.appendChild(severity);
-    appendCells(row, ["—", "—", semantic.message || "Nenhuma inconsistência semântica encontrada."]);
-    problemsBody.appendChild(row);
-    problemsCount.textContent = "0";
-    statusErrors.textContent = "0";
-    semanticSummary.textContent = "0 erros";
+
+    if (diagnostics.length === 0) {
+        const row = document.createElement("tr");
+        const severity = document.createElement("td");
+        severity.className = "severity-ok";
+        severity.textContent = "OK";
+        row.appendChild(severity);
+        appendCells(row, ["—", "—", semantic.message || "Nenhuma inconsistência semântica encontrada."]);
+        problemsBody.appendChild(row);
+    }
+
+    diagnostics.forEach((diagnostic) => {
+        const row = document.createElement("tr");
+        const severity = document.createElement("td");
+        const isError = diagnostic.severity === "erro";
+        severity.className = isError ? "severity-error" : "severity-warning";
+        severity.textContent = isError ? "ERRO" : "AVISO";
+        row.appendChild(severity);
+        appendCells(row, [diagnostic.line ?? "—", diagnostic.column ?? "—", diagnostic.message]);
+        problemsBody.appendChild(row);
+    });
+
+    problemsCount.textContent = String(diagnostics.length);
+    statusErrors.textContent = String(errors);
+    semanticSummary.textContent = `${plural(errors, "erro", "erros")}, ${plural(warnings, "aviso", "avisos")}`;
 }
 
 function renderProblem(stage, line, column, description) {

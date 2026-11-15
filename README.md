@@ -1,6 +1,6 @@
-# Compilador de C em Python (Do Zero)
+# Mini Compilador C em Python
 
-Projeto estruturado para desenvolvimento de um compilador de subconjunto de C (C0 / Tiny C) em Python, sem dependências externas.
+Front-end de um compilador para um subconjunto didático de C, escrito em Python puro (sem dependências externas). Executa as etapas **léxica**, **sintática** e **semântica** e exibe o resultado em uma interface web.
 
 ---
 
@@ -8,39 +8,73 @@ Projeto estruturado para desenvolvimento de um compilador de subconjunto de C (C
 
 ```text
 .
-├── main.py                         # Ponto de entrada (CLI do compilador)
-├── README.md                       # Documentação do projeto
+├── main.py                     # CLI: python main.py [arquivo.c]
+├── server.py                   # Servidor web (http://localhost:5000)
 ├── src/
-│   ├── preprocessor/               # Pré-processamento (#include, #define)
-│   ├── lexer/                      # Análise Léxica (Tokens)
-│   ├── parser/                     # Análise Sintática (AST)
-│   ├── semantic/                   # Análise Semântica (Tipos e Tabela de Símbolos)
-│   ├── ir/                         # Representação Intermediária (TAC e Otimização)
-│   ├── codegen/                    # Geração de Código (Assembly x86-64)
-│   └── utils/                      # Erros e diagnósticos visuais
-└── tests/                          # Testes unitários e programas C de exemplo
-    └── c_samples/                  # Arquivos .c de teste incremental
+│   ├── token.py                # Classe Token
+│   ├── lexer.py                # Análise léxica (tokens, comentários)
+│   ├── tabela_simbolos.py      # Tabela de símbolos
+│   ├── arvore_sintatica.py     # Nós da AST
+│   ├── parser.py               # Análise sintática (descendente recursiva)
+│   ├── analisador_semantico.py # Análise semântica (tipos e escopo)
+│   ├── compilador.py           # Pipeline: léxico → símbolos → sintático → semântico
+│   └── erros.py                # ErroLexico / ErroSintatico com linha e coluna
+├── web/                        # Interface (HTML, CSS, JS)
+└── tests/                      # Testes unitários (unittest)
 ```
 
 ---
 
-## Pipeline de Compilação
+## Linguagem suportada
 
-1. **Pré-processador (`src/preprocessor/`)**: Processa diretivas básicas ou usa o pré-processador do sistema.
-2. **Lexer (`src/lexer/`)**: Converte o código-fonte C em uma sequência de tokens tipados.
-3. **Parser (`src/parser/`)**: Constrói a Árvore de Sintaxe Abstrata (AST) a partir dos tokens.
-4. **Análise Semântica (`src/semantic/`)**: Valida tipos, escopos e coerência lógica da AST.
-5. **Representação Intermediária (`src/ir/`)**: Converte a AST em instruções lineares (TAC) e aplica otimizações.
-6. **Gerador de Código (`src/codegen/`)**: Emite o código Assembly x86-64 (.s) de acordo com a ABI.
-7. **Montagem & Ligação (`main.py`)**: Chama o montador/ligador (`gcc` / `clang` / `as`+`ld`) para gerar o executável final.
+```c
+// comentário de linha
+int idade = 20;
+float preco = 19.90;
+char letra = 'A';
+idade = idade + 2 * 3;   /* comentário de bloco */
+return -idade;
+```
+
+Gramática:
+
+```text
+programa    -> comando* FIM
+comando     -> declaracao | atribuicao | retorno
+declaracao  -> ("int" | "float" | "char") IDENT ("=" expressao)? ";"
+atribuicao  -> IDENT "=" expressao ";"
+retorno     -> "return" expressao ";"
+expressao   -> termo (("+" | "-") termo)*
+termo       -> fator (("*" | "/" | "%") fator)*
+fator       -> ("+" | "-") fator | NUMERO | NUMERO_REAL | CARACTERE | TEXTO | IDENT | "(" expressao ")"
+```
+
+## Análise semântica
+
+O programa é tratado como o corpo de `int main()`. Os problemas são acumulados (não para no primeiro).
+
+| Erros | Avisos |
+|---|---|
+| Variável não declarada (uso ou atribuição) | Conversão `float` → `int`/`char` (perda de precisão) |
+| Variável declarada mais de uma vez | Variável usada antes de receber valor |
+| Texto atribuído/retornado como valor numérico | Divisão por zero com divisor constante |
+| Operador aritmético aplicado a texto | Código inalcançável após `return` |
+| `%` com operando `float` | Variável declarada e nunca utilizada |
+
+Promoções implícitas válidas: `char` → `int` → `float`.
 
 ---
 
-## Roteiro de Testes Incremental (`tests/c_samples/`)
+## Como usar
 
-- `01_return_val.c`: `int main() { return 42; }`
-- `02_arithmetic.c`: Operações aritméticas e precedência de operadores.
-- `03_variables.c`: Declarações e atribuições de variáveis locais.
-- `04_control_flow.c`: Estruturas `if`, `else`, `while` e `for`.
-- `05_functions.c`: Chamadas e definições de funções com argumentos.
-- `06_pointers.c`: Operadores de endereço (`&`), desreferência (`*`) e ponteiros.
+```bash
+# Interface web
+python server.py            # abre em http://localhost:5000
+
+# Linha de comando (código de exemplo ou arquivo)
+python main.py
+python main.py programa.c   # código de saída 1 se houver erros
+
+# Testes
+python -m unittest discover tests
+```

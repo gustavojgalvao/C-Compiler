@@ -3,9 +3,8 @@ import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 
-from src.lexer import Lexer
-from src.tabela_simbolos import TabelaSimbolos
-from src.parser import Parser, ErroSintatico
+from src.compilador import compilar
+from src.erros import ErroCompilacao
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +34,15 @@ class CompilerHandler(SimpleHTTPRequestHandler):
 
         self.wfile.write(conteudo)
 
+    def enviar_erro(self, etapa, mensagem, linha=1, coluna=1):
+        self.enviar_json({
+            "success": False,
+            "error_stage": etapa,
+            "error": mensagem,
+            "line": linha,
+            "column": coluna
+        })
+
     def do_POST(self):
         caminho = urlparse(self.path).path
 
@@ -59,89 +67,56 @@ class CompilerHandler(SimpleHTTPRequestHandler):
             codigo = dados.get("code", "")
 
             if not codigo.strip():
-                self.enviar_json({
-                    "success": False,
-                    "error_stage": "Entrada",
-                    "error": "O código-fonte está vazio.",
-                    "line": 1,
-                    "column": 1
-                })
+                self.enviar_erro("Entrada", "O código-fonte está vazio.")
                 return
 
-            # Primeira etapa: análise léxica
-            lexer = Lexer(codigo)
-            tokens = lexer.tokenizar()
+            resultado = compilar(codigo)
 
-            # Tabela de símbolos
-            tabela = TabelaSimbolos()
-            tabela.construir(tokens)
-
-            # Segunda etapa: análise sintática
-            parser = Parser(tokens)
-            arvore = parser.analisar()
-
-            tokens_json = []
-
-            for token in tokens:
-                tokens_json.append({
+            tokens_json = [
+                {
                     "tipo": token.tipo,
                     "lexema": token.lexema,
                     "linha": token.linha,
                     "coluna": token.coluna
-                })
+                }
+                for token in resultado.tokens
+            ]
 
-            simbolos_json = []
-
-            for simbolo in tabela.simbolos:
-                simbolos_json.append({
+            simbolos_json = [
+                {
                     "ordem": simbolo.ordem,
                     "lexema": simbolo.lexema,
                     "categoria": simbolo.categoria,
                     "tipo": simbolo.tipo,
                     "linha": simbolo.linha
-                })
+                }
+                for simbolo in resultado.tabela.simbolos
+            ]
 
-            resposta = {
+            self.enviar_json({
                 "success": True,
                 "tokens": tokens_json,
                 "symbols": simbolos_json,
-
-                "ast_pretty": arvore.formatar(),
-                "semantic": {
-                    "message": (
-                        "Análise semântica ainda não implementada."
-                    )
-                }
-            }
-
-            self.enviar_json(resposta)
-        
-        except ErroSintatico as erro:
-            self.enviar_json({
-                "success": False,
-                "error_stage": "Sintática",
-                "error": str(erro),
-                "line": erro.linha,
-                "column": erro.coluna
+                "ast_pretty": resultado.arvore.formatar(),
+                "semantic": resultado.semantico.para_dict()
             })
 
-        except json.JSONDecodeError:
-            self.enviar_json({
-                "success": False,
-                "error_stage": "Entrada",
-                "error": "O servidor recebeu um JSON inválido.",
-                "line": 1,
-                "column": 1
-            })
+        except ErroCompilacao as erro:
+            self.enviar_erro(
+                erro.etapa,
+                str(erro),
+                erro.linha,
+                erro.coluna
+            )
+
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            self.enviar_erro(
+                "Entrada",
+                "O servidor recebeu uma requisição inválida."
+            )
 
         except Exception as erro:
-            self.enviar_json({
-                "success": False,
-                "error_stage": "Léxica",
-                "error": str(erro),
-                "line": 1,
-                "column": 1
-            })
+            self.enviar_erro("Interna", f"Erro interno: {erro}")
 
 
 def iniciar_servidor(porta=5000):

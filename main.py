@@ -1,9 +1,3 @@
-"""
-Uso:
-    python main.py                # analisa o programa de exemplo abaixo
-    python main.py arquivo.c      # analisa um arquivo
-"""
-
 import sys
 
 from src.compilador import compilar
